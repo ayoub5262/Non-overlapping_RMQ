@@ -1,0 +1,9 @@
+build/
+install/
+FL-RMQ/
+sdsl-lite/
+.vscode/
+Plan.md
+dst2.hpp
+dstAnimation.jsx
+F_H-sct.hpp
