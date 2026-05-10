@@ -12,7 +12,7 @@ class BigDataDST {
     static constexpr DTidx BLOCK_SIZE { 64 };
     
     // Uninitialisierter Speicher verhindert teures Zeroing bei Giga-Arrays
-    std::unique_ptr<DT[]> table; 
+    std::unique_ptr<DTidx[]> table; 
     const std::vector<DT>& raw_data; // Referenz für Intra-Block Queries
     DTidx blocks, levels;
 
@@ -24,24 +24,26 @@ public:
         levels = blocks <= 1 ? 1 : std::bit_width(static_cast<unsigned>(blocks - 1)) + 1;
 
         // C++20: Allokiert Speicher ohne ihn mit Nullen zu überschreiben
-        table = std::make_unique_for_overwrite<DT[]>(levels * blocks);
+        table = std::make_unique_for_overwrite<DTidx[]>(levels * blocks);
 
         // 1. Minima pro Block berechnen
         // #pragma omp parallel for schedule(dynamic)
         for (DTidx i { 0 }; i < blocks; ++i) {
-            DT min_val { data[i * BLOCK_SIZE] };
+            DTidx min_idx { i * BLOCK_SIZE };
             DTidx end { std::min(n, (i + 1) * BLOCK_SIZE) };
             for (DTidx j { i * BLOCK_SIZE + 1 }; j < end; ++j) {
-                min_val = std::min(min_val, data[j]);
+                if (data[j] < data[min_idx]) {
+                    min_idx = j;
+                }
             }
-            table[i] = min_val; // Base-Level der Sparse Table
+            table[i] = min_idx; // Base-Level der Sparse Table
         }
 
         // 2. Disjoint Sparse Table NUR über die Block-Minima bauen
         for (DTidx h { 1 }; h < levels; ++h) {
             DTidx half { DTidx(1) << (h - 1) };
             DTidx range { half << 1 };
-            DT* row { &table[h * blocks] };
+            DTidx* row { &table[h * blocks] };
 
             // #pragma omp parallel for schedule(dynamic)
             for (DTidx center { half }; center < blocks; center += range) {
@@ -49,46 +51,54 @@ public:
                 // Vermeidung von Unsigned Underflow (i >= 0 wird problematisch)
                 for (DTidx j { 1 }; j < half; ++j) {
                     DTidx i { center - 1 - j };
-                    row[i] = std::min(table[i], row[i + 1]);
+                    row[i] = data[table[i]] < data[row[i + 1]] ? table[i] : row[i + 1];
                 }
 
                 DTidx rend { std::min(blocks, center + half) };
                 row[center] = table[center];
                 for (DTidx i { center + 1 }; i < rend; ++i)
-                    row[i] = std::min(table[i], row[i - 1]);
+                    row[i] = data[table[i]] < data[row[i - 1]] ? table[i] : row[i - 1];
             }
         }
     }
 
     // Query O(BLOCK_SIZE) Time
-    DT query(DTidx l, DTidx r) const {
+    DTidx query(DTidx l, DTidx r) const {
         DTidx b_l { l / BLOCK_SIZE };
         DTidx b_r { r / BLOCK_SIZE };
 
         // Fall 1: Query komplett im selben Block (linearer Scan)
         if (b_l == b_r) {
-            DT res { raw_data[l] };
-            for (DTidx i = l + 1; i <= r; ++i) res = std::min(res, raw_data[i]);
+            DTidx res { l };
+            for (DTidx i = l + 1; i <= r; ++i) {
+                if (raw_data[i] < raw_data[res]) res = i;
+            }
             return res;
         }
 
         // Fall 2: Query überspannt mehrere Blöcke
         // Rand links (Intra-Block)
-        DT res { raw_data[l] };
+        DTidx res { l };
         DTidx end_l { (b_l + 1) * BLOCK_SIZE };
-        for (DTidx i { l + 1 }; i < end_l; ++i) res = std::min(res, raw_data[i]);
+        for (DTidx i { l + 1 }; i < end_l; ++i) {
+            if (raw_data[i] < raw_data[res]) res = i;
+        }
 
         // Rand rechts (Intra-Block)
         DTidx start_r { b_r * BLOCK_SIZE };
-        for (DTidx i { start_r }; i <= r; ++i) res = std::min(res, raw_data[i]);
+        for (DTidx i { start_r }; i <= r; ++i) {
+            if (raw_data[i] < raw_data[res]) res = i;
+        }
 
         // Dazwischenliegende Voll-Blöcke (Inter-Block O(1) via Sparse Table)
         if (b_l + 1 <= b_r - 1) {
             DTidx ql { b_l + 1 };
             DTidx qr { b_r - 1 };
             int h { std::bit_width(static_cast<unsigned>(ql ^ qr)) };
-            const DT* row { &table[h * blocks] };
-            res = std::min({res, row[ql], row[qr]});
+            const DTidx* row { &table[h * blocks] };
+            
+            if (raw_data[row[ql]] < raw_data[res]) res = row[ql];
+            if (raw_data[row[qr]] < raw_data[res]) res = row[qr];
         }
 
         return res;

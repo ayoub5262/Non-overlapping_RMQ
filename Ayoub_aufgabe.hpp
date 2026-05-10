@@ -21,9 +21,6 @@ public:
     }
 
     int query(int l, int r){
-        if (l > r) { std::swap(l ,r);}
-        if (l < 0) { l = 0;}
-        if (r > n - 1) { r = n - 1;}
         return table[l][r];
     }
 

@@ -1,60 +1,59 @@
 #pragma once
 
 #include <vector>
-#include <algorithm>
 #include <bit>
+#include <algorithm>
 
 class DisjointSparseTable {
-    // Flat 1-D storage: row-major, table[h * n + i]
-    // Avoids pointer-chasing from vector-of-vectors
-    std::vector<int> table;
-    int n, levels;
+    std::vector<std::vector<int>> table;
+    std::vector<int> raw_data;
+    int n;
 
 public:
-    // Build  O(n log n) time │ O(n log n) space 
-    explicit DisjointSparseTable(const std::vector<int>& data) {
-        n = static_cast<int>(data.size());
-
-        // Number of bits needed to cover n-1 elements, plus 1 for the 0-level
-        levels = n <= 1 ? 1 : std::bit_width(static_cast<unsigned>(n - 1)) + 1;
-
-        table.resize(levels * n);
-
-        std::copy(data.begin(), data.end(), table.begin());
+    DisjointSparseTable(const std::vector<int>& data) : raw_data(data) {
+        n = data.size();
+        int levels = 1;
+        while ((1 << levels) < n) ++levels;
+        ++levels;
+        
+        table.assign(levels, std::vector<int>(n));
 
         for (int h {1}; h < levels; ++h) {
-            int half { 1 << (h - 1)};
-            int range { half << 1};
-            int* row  { &table[h * n]}; // pointer to current row — no repeated multiply
-
-            // The blocks (centers) are independent of each other perfect for multithreading.
-            // #pragma omp parallel for schedule(dynamic) // Deaktiviert für reine Single-Thread Messungen
-            for (int center = half; center < n; center += range) {
-                // Left prefix-minima
-                row[center - 1] = data[center - 1];
-                for (int i {center - 2}; i >= center - half && i >= 0; --i)
-                    row[i] = std::min(data[i], row[i + 1]);
-
-                // Right suffix-minima 
-                int rend { std::min(n, center + half)};
-                row[center] = data[center];
-                for (int i { center + 1}; i < rend; ++i)
-                    row[i] = std::min(data[i], row[i - 1]);
+            int range = 1 << h;
+            int half = 1 << (h - 1);
+            for (int center {half}; center < n; center += range) {
+                // Compute the prefix minima to left
+                table[h][center - 1] = center - 1;
+                for (int i {center - 2}; i >= center - half; --i) {
+                    if (data[i] < data[table[h][i + 1]]){
+                        table[h][i] = i;
+                    } else {
+                        table[h][i] = table[h][i + 1];
+                    }
+                }
+                // Compute the suffix minima to right
+                table[h][center] = center;
+                for (int i {center + 1}; i < std::min(n, center + half); ++i) {
+                    if (data[i] < data[table[h][i - 1]]){
+                        table[h][i] = i;
+                    } else {
+                        table[h][i] = table[h][i - 1];
+                    }
+                }
             }
         }
     }
 
     int query(int l, int r) const {
-        if (l == r) return table[l];
+        if (l == r) return l;
+        // Find the highest level where l and r in different blocks lay
+        int h = std::bit_width(static_cast<unsigned>(l ^ r));
 
-        // Extracted bit_width automatically corresponds to our shifted memory layout (1-indexed level)
-        int h { std::bit_width(static_cast<unsigned>(l ^ r)) };
-
-        const int* row { &table[h * n]};
-        return std::min(row[l], row[r]);
+        if (raw_data[table[h][l]] < raw_data[table[h][r]]){
+            return table[h][l];
+        } else {
+            return table[h][r];
+        }
     }
 
-    size_t size_in_bytes() const {
-        return table.size() * sizeof(int);
-    }
 };
