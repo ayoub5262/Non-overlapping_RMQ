@@ -7,26 +7,26 @@
 #include <cstdint>
 #include <cstddef>
 
-template <typename DT, typename DTidx = std::size_t>
+template <typename DT, typename DTidx = std::uint32_t>
 class BigDataDST {
-    static constexpr DTidx BLOCK_SIZE { 64 };
+    DTidx BLOCK_SIZE;
     
-    // Uninitialisierter Speicher verhindert teures Zeroing bei Giga-Arrays
+    // Uninitialized memory prevents expensive zeroing for Giga-arrays
     std::unique_ptr<DTidx[]> table; 
-    const std::vector<DT>& raw_data; // Referenz für Intra-Block Queries
+    const std::vector<DT>& raw_data; // Reference for intra block queries
     DTidx blocks, levels;
 
 public:
     // Build O(n) Time | O(n / BLOCK_SIZE * log(n / BLOCK_SIZE)) Space
-    explicit BigDataDST(const std::vector<DT>& data) : raw_data(data) {
+    explicit BigDataDST(const std::vector<DT>& data, const DTidx B_S) : raw_data(data), BLOCK_SIZE(B_S) {
         DTidx n { static_cast<DTidx>(data.size()) };
         blocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
         levels = blocks <= 1 ? 1 : std::bit_width(static_cast<unsigned>(blocks - 1)) + 1;
 
-        // C++20: Allokiert Speicher ohne ihn mit Nullen zu überschreiben
+        // C++20: Allocates memory without overwriting it with zeros
         table = std::make_unique_for_overwrite<DTidx[]>(levels * blocks);
 
-        // 1. Minima pro Block berechnen
+        // 1. Calculate minima per block
         // #pragma omp parallel for schedule(dynamic)
         for (DTidx i { 0 }; i < blocks; ++i) {
             DTidx min_idx { i * BLOCK_SIZE };
@@ -36,10 +36,10 @@ public:
                     min_idx = j;
                 }
             }
-            table[i] = min_idx; // Base-Level der Sparse Table
+            table[i] = min_idx; // Base level of the Sparse Table
         }
 
-        // 2. Disjoint Sparse Table NUR über die Block-Minima bauen
+        // 2. Build Disjoint Sparse Table ONLY over the block minima
         for (DTidx h { 1 }; h < levels; ++h) {
             DTidx half { DTidx(1) << (h - 1) };
             DTidx range { half << 1 };
@@ -48,7 +48,7 @@ public:
             // #pragma omp parallel for schedule(dynamic)
             for (DTidx center { half }; center < blocks; center += range) {
                 row[center - 1] = table[center - 1];
-                // Vermeidung von Unsigned Underflow (i >= 0 wird problematisch)
+                // Avoidance of unsigned underflow (i >= 0 becomes problematic)
                 for (DTidx j { 1 }; j < half; ++j) {
                     DTidx i { center - 1 - j };
                     row[i] = data[table[i]] < data[row[i + 1]] ? table[i] : row[i + 1];
@@ -67,7 +67,7 @@ public:
         DTidx b_l { l / BLOCK_SIZE };
         DTidx b_r { r / BLOCK_SIZE };
 
-        // Fall 1: Query komplett im selben Block (linearer Scan)
+        // Case 1: Query completely within the same block (linear scan)
         if (b_l == b_r) {
             DTidx res { l };
             for (DTidx i = l + 1; i <= r; ++i) {
@@ -76,21 +76,21 @@ public:
             return res;
         }
 
-        // Fall 2: Query überspannt mehrere Blöcke
-        // Rand links (Intra-Block)
+        // Case 2: Query spans multiple blocks
+        // Left boundary (intra block)
         DTidx res { l };
         DTidx end_l { (b_l + 1) * BLOCK_SIZE };
         for (DTidx i { l + 1 }; i < end_l; ++i) {
             if (raw_data[i] < raw_data[res]) res = i;
         }
 
-        // Rand rechts (Intra-Block)
+        // Right boundary (intra block)
         DTidx start_r { b_r * BLOCK_SIZE };
         for (DTidx i { start_r }; i <= r; ++i) {
             if (raw_data[i] < raw_data[res]) res = i;
         }
 
-        // Dazwischenliegende Voll-Blöcke (Inter-Block O(1) via Sparse Table)
+        // Intermediate full blocks (inter block O(1) via Sparse Table)
         if (b_l + 1 <= b_r - 1) {
             DTidx ql { b_l + 1 };
             DTidx qr { b_r - 1 };

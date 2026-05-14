@@ -4,4 +4,6 @@ mkdir -p build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$(nproc)
-./rmq_benchmarks --benchmark_format=csv | tee results.csv
+./rmq_bench | tee results_console.txt
+echo ""
+echo "CSV saved to: build/results.csv"
