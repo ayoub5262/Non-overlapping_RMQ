@@ -8,6 +8,7 @@
 // RMQ Data Structures
 #include <sdsl/rmq_succinct_rec_new.hpp>
 #include "BD_dst.hpp"
+#include "AI_BD_dst_enhanced.hpp"
 #include "rmq/includes/RMQRMM64.h"
 
 // Memory tracker
@@ -45,9 +46,7 @@ std::vector<QueryPair> gen_random_queries(int n, int k = 1000) {
 
 // ============================================================
 //  BENCHMARK SIZES
-//  Full:  10 to 10^8 — for compact structures (BigDataDST, SDSL, RMQRMM64)
-//  Heavy: 10 to 10^7 — for O(n log n) space structures (DST Nested/Flat)
-//         At n=10^8 they need ~11 GB and get OOM-killed.
+//  Full:  10 to 10^9 — for compact structures (BigDataDST, SDSL, RMQRMM64)
 // ============================================================
 
 static void FullSizes(benchmark::internal::Benchmark* b) {
@@ -74,6 +73,19 @@ static void BM_BD_DST_Build(benchmark::State& state) {
     state.SetComplexityN(state.range(0));
 }
 BENCHMARK(BM_BD_DST_Build)->Apply(FullSizes)->Iterations(1)->Complexity(benchmark::oAuto);
+
+static void BM_BD_DST_Enhanced_Build(benchmark::State& state) {
+    auto data = gen_random_perm(state.range(0));
+    for (auto _ : state) {
+        size_t mem_before = malloc_count_current();
+        BigDataDST_Enhanced<int, 256, 8, uint32_t> bd(data);
+        size_t mem_after = malloc_count_current();
+        state.counters["bits_per_element"] = ((mem_after - mem_before) * 8.0) / state.range(0);
+        benchmark::ClobberMemory();
+    }
+    state.SetComplexityN(state.range(0));
+}
+BENCHMARK(BM_BD_DST_Enhanced_Build)->Apply(FullSizes)->Iterations(1)->Complexity(benchmark::oAuto);
 
 static void BM_SDSL_RecNew_Build(benchmark::State& state) {
     auto data = gen_random_perm(state.range(0));
@@ -126,6 +138,23 @@ static void BM_BD_DST_Query(benchmark::State& state) {
     state.SetComplexityN(state.range(0));
 }
 BENCHMARK(BM_BD_DST_Query)->Apply(FullSizes)->Complexity(benchmark::o1);
+
+static void BM_BD_DST_Enhanced_Query(benchmark::State& state) {
+    auto data = gen_random_perm(state.range(0));
+    size_t mem_before = malloc_count_current();
+    BigDataDST_Enhanced<int, 256, 8, uint32_t> bd(data);
+    size_t mem_after = malloc_count_current();
+    state.counters["bits_per_element"] = ((mem_after - mem_before) * 8.0) / state.range(0);
+
+    auto queries = gen_random_queries(state.range(0));
+    size_t qi = 0;
+    for (auto _ : state) {
+        const auto& q = queries[qi++ % queries.size()];
+        benchmark::DoNotOptimize(bd.query(q.l, q.r));
+    }
+    state.SetComplexityN(state.range(0));
+}
+BENCHMARK(BM_BD_DST_Enhanced_Query)->Apply(FullSizes)->Complexity(benchmark::o1);
 
 static void BM_SDSL_RecNew_Query(benchmark::State& state) {
     auto data = gen_random_perm(state.range(0));

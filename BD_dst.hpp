@@ -13,7 +13,7 @@ class BigDataDST {
     
     // Uninitialized memory prevents expensive zeroing for Giga-arrays
     std::unique_ptr<DTidx[]> table; 
-    const std::vector<DT>& raw_data; // Reference for intra block queries
+    const std::vector<DT>& raw_data;
     DTidx blocks, levels;
 
 public:
@@ -32,14 +32,12 @@ public:
             DTidx min_idx { i * BLOCK_SIZE };
             DTidx end { std::min(n, (i + 1) * BLOCK_SIZE) };
             for (DTidx j { i * BLOCK_SIZE + 1 }; j < end; ++j) {
-                if (data[j] < data[min_idx]) {
-                    min_idx = j;
-                }
+                if (data[j] < data[min_idx]) min_idx = j;
             }
             table[i] = min_idx; // Base level of the Sparse Table
         }
 
-        // 2. Build Disjoint Sparse Table ONLY over the block minima
+        // 2. Build Disjoint Sparse Table only over the block minima
         for (DTidx h { 1 }; h < levels; ++h) {
             DTidx half { DTidx(1) << (h - 1) };
             DTidx range { half << 1 };
@@ -48,7 +46,6 @@ public:
             // #pragma omp parallel for schedule(dynamic)
             for (DTidx center { half }; center < blocks; center += range) {
                 row[center - 1] = table[center - 1];
-                // Avoidance of unsigned underflow (i >= 0 becomes problematic)
                 for (DTidx j { 1 }; j < half; ++j) {
                     DTidx i { center - 1 - j };
                     row[i] = data[table[i]] < data[row[i + 1]] ? table[i] : row[i + 1];
@@ -66,10 +63,10 @@ public:
     DTidx query(DTidx l, DTidx r) const {
         DTidx b_l { l / BLOCK_SIZE };
         DTidx b_r { r / BLOCK_SIZE };
+        DTidx res { l };
 
-        // Case 1: Query completely within the same block (linear scan)
+        // Case 1: Query completely within the same block : linear scan
         if (b_l == b_r) {
-            DTidx res { l };
             for (DTidx i = l + 1; i <= r; ++i) {
                 if (raw_data[i] < raw_data[res]) res = i;
             }
@@ -78,7 +75,6 @@ public:
 
         // Case 2: Query spans multiple blocks
         // Left boundary (intra block)
-        DTidx res { l };
         DTidx end_l { (b_l + 1) * BLOCK_SIZE };
         for (DTidx i { l + 1 }; i < end_l; ++i) {
             if (raw_data[i] < raw_data[res]) res = i;
@@ -90,10 +86,8 @@ public:
             if (raw_data[i] < raw_data[res]) res = i;
         }
 
-        // Intermediate full blocks (inter block O(1) via Sparse Table)
-        if (b_l + 1 <= b_r - 1) {
-            DTidx ql { b_l + 1 };
-            DTidx qr { b_r - 1 };
+        // Intermediate full blocks via DST
+        if (DTidx ql { b_l + 1 }, qr { b_r - 1 }; ql <= qr) {
             int h { std::bit_width(static_cast<unsigned>(ql ^ qr)) };
             const DTidx* row { &table[h * blocks] };
             

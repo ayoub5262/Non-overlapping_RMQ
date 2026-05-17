@@ -21,7 +21,7 @@ public:
 
         table.resize(levels * n);
 
-        for (int i = 0; i < n; ++i) table[i] = i;
+        for (int i { 0 }; i < n; ++i) table[i] = i;
 
         for (int h {1}; h < levels; ++h) {
             int half { 1 << (h - 1)};
@@ -30,7 +30,7 @@ public:
 
             // The blocks (centers) are independent of each other perfect for multithreading.
             // #pragma omp parallel for schedule(dynamic) // Deaktiviert für reine Single-Thread Messungen
-            for (int center = half; center < n; center += range) {
+            for (int center {half}; center < n; center += range) {
                 // Left prefix-minima
                 row[center - 1] = center - 1;
                 for (int i {center - 2}; i >= center - half && i >= 0; --i)
