@@ -1,8 +1,3 @@
-// ============================================================
-//  RMQ Benchmark — chrono + malloc_count
-//  Outputs results to results.csv.
-// ============================================================
-
 #include <chrono>
 #include <ctime>
 #include <vector>
@@ -94,7 +89,7 @@ struct Timer {
 };
 
 // ============================================================
-//  CSV & Console Output
+//  CSV Output
 // ============================================================
 
 void write_header(ofstream& csv) {
@@ -117,7 +112,7 @@ void write_row(ofstream& csv,
               << " | bits=" << setw(8) << bits << "\n";
 }
 
-// Extra write_row for the query-range experiment (includes query_range column)
+// Extra write_row for the query-range experiment, includes query_range column
 void write_row_ranged(ofstream& csv,
                       const string& algo, long long n,
                       int range_len, double real_ns, double cpu_ns)
@@ -143,9 +138,7 @@ const vector<long long> full  = {10, 100, 1000, 10'000, 100'000, 1'000'000, 10'0
 
 const int NUM_QUERIES = 10'000;
 
-// ============================================================
-//  Main
-// ============================================================
+
 
 int main() {
     ofstream csv("results.csv");
@@ -163,7 +156,7 @@ int main() {
 
         size_t mem_before = malloc_count_current();
         timer.start();
-        BigDataDST<int, uint32_t> dst(data, 256);
+        BDDST<int, uint32_t> dst(data, 256);
         auto [build_real, build_cpu] = timer.stop();
         size_t mem_after = malloc_count_current();
         double bits = (mem_after - mem_before) * 8.0 / n;
@@ -240,9 +233,9 @@ int main() {
     //  6. Query-Range Experiment
     //     Fixed n = 10^7, vary query range length from 10 to 10^7
     //     Shows how query time changes with range length
-    //     (short queries stay in L1 cache; long queries cause L3/RAM misses)
+    //     if short queries stay in L1 cache and long queries cause L3/RAM misses
     //
-    //     NOTE: bits_per_element column is repurposed for query_range here.
+    //     bits_per_element column is repurposed for query_range here.
     // ────────────────────────────────────────────────────────
     cout << "\n=== Query-Range Experiment (n=10^7) ===\n";
 
@@ -252,7 +245,7 @@ int main() {
     // Build all structures once on the same data
     auto range_data = gen_random_perm(N_RANGE);
 
-    BigDataDST<int, uint32_t> bd(range_data, 256);
+    BDDST<int, uint32_t> bd(range_data, 256);
     sdsl::rmq_succinct_rec_new<true, 0, 1024> sdsl_r(&range_data);
     RMQRMM64 rmm(range_data.data(), range_data.size());
 
@@ -265,7 +258,7 @@ int main() {
           auto [r, c] = timer.stop();
           write_row_ranged(csv, "BD_DST", N_RANGE, range_len, r/NUM_QUERIES, c/NUM_QUERIES); }
 
-        // SDSL
+        // SDSL_RecNew
         { volatile size_t s = 0; timer.start();
           for (int i = 0; i < NUM_QUERIES; ++i) s = sdsl_r(q[i].l, q[i].r);
           auto [r, c] = timer.stop();

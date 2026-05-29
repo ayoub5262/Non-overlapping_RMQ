@@ -1,8 +1,3 @@
-// ============================================================
-//  RMQ Benchmark — Block Size Sweep
-//  Outputs results to results_block_sweep.csv.
-// ============================================================
-
 #include <chrono>
 #include <ctime>
 #include <vector>
@@ -73,12 +68,12 @@ struct Timer {
 };
 
 // ============================================================
-//  CSV & Console Output
+//  CSV Output
 // ============================================================
 
 void write_header(ofstream& csv) {
-    // Note: block_size is the element-level block size for BD_DST and the
-    // BP-sequence super-block size for SDSL — the parameters are not directly
+    // Note: block_size is the element level block size for BD_DST and the
+    // BP-sequence super-block size for SDSL, the parameters are not directly
     // comparable, but the same values are swept for both to explore their
     // independent space-time trade-offs.
     csv << "algorithm,block_size,size,scenario,query_range,cpu_time_ns,bits_per_element\n";
@@ -134,7 +129,7 @@ void run_sdsl_benchmark(ofstream& csv, long long n, const vector<int>& data, Tim
 void run_bd_dst_benchmark(ofstream& csv, int B, long long n, const vector<int>& data, Timer& timer) {
     size_t mem_before = malloc_count_current();
     timer.start();
-    BigDataDST<int, uint32_t> dst(data, B);
+    BDDST<int, uint32_t> dst(data, B);
     auto [build_real, build_cpu] = timer.stop();
     size_t mem_after = malloc_count_current();
     double bits = (mem_after - mem_before) * 8.0 / n;

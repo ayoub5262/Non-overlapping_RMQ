@@ -3,7 +3,6 @@
 #include <random>
 #include <numeric>
 #include <algorithm>
-#include <bit>
 
 // RMQ Data Structures
 #include <sdsl/rmq_succinct_rec_new.hpp>
@@ -46,7 +45,7 @@ std::vector<QueryPair> gen_random_queries(int n, int k = 1000) {
 
 // ============================================================
 //  BENCHMARK SIZES
-//  Full:  10 to 10^9 — for compact structures (BigDataDST, SDSL, RMQRMM64)
+//  Full:  10 to 10^9 — for compact structures (BDDST, SDSL, RMQRMM64)
 // ============================================================
 
 static void FullSizes(benchmark::internal::Benchmark* b) {
@@ -65,7 +64,7 @@ static void BM_BD_DST_Build(benchmark::State& state) {
     auto data = gen_random_perm(state.range(0));
     for (auto _ : state) {
         size_t mem_before = malloc_count_current();
-        BigDataDST<int, uint32_t> bd_dst(data, 256);
+        BDDST<int, uint32_t> bd_dst(data, 256);
         size_t mem_after = malloc_count_current();
         state.counters["bits_per_element"] = ((mem_after - mem_before) * 8.0) / state.range(0);
         benchmark::ClobberMemory();
@@ -125,7 +124,7 @@ BENCHMARK(BM_RMQRMM64_Build)->Apply(FullSizes)->Iterations(1)->Complexity(benchm
 static void BM_BD_DST_Query(benchmark::State& state) {
     auto data = gen_random_perm(state.range(0));
     size_t mem_before = malloc_count_current();
-    BigDataDST<int, uint32_t> bd_dst(data, 256);
+    BDDST<int, uint32_t> bd_dst(data, 256);
     size_t mem_after = malloc_count_current();
     state.counters["bits_per_element"] = ((mem_after - mem_before) * 8.0) / state.range(0);
 

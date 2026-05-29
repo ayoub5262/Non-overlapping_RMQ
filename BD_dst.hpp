@@ -5,29 +5,27 @@
 #include <bit>
 #include <memory>
 #include <cstdint>
-#include <cstddef>
 
 template <typename DT, typename DTidx = std::uint32_t>
-class BigDataDST {
+class BDDST {
     DTidx BLOCK_SIZE;
     
-    // Uninitialized memory prevents expensive zeroing for Giga-arrays
+    // Uninitialized memory prevents expensive zeroing
     std::unique_ptr<DTidx[]> table; 
     const std::vector<DT>& raw_data;
     DTidx blocks, levels;
 
 public:
     // Build O(n) Time | O(n / BLOCK_SIZE * log(n / BLOCK_SIZE)) Space
-    explicit BigDataDST(const std::vector<DT>& data, const DTidx B_S) : raw_data(data), BLOCK_SIZE(B_S) {
+    explicit BDDST(const std::vector<DT>& data, const DTidx B_S) : raw_data(data), BLOCK_SIZE(B_S) {
         DTidx n { static_cast<DTidx>(data.size()) };
         blocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
-        levels = blocks <= 1 ? 1 : std::bit_width(static_cast<unsigned>(blocks - 1)) + 1;
+        levels = blocks <= 1 ? 1 : std::bit_width(static_cast<unsigned>(blocks - 1));
 
-        // C++20: Allocates memory without overwriting it with zeros
+        // Allocates memory without overwriting it with zeros
         table = std::make_unique_for_overwrite<DTidx[]>(levels * blocks);
 
         // 1. Calculate minima per block
-        // #pragma omp parallel for schedule(dynamic)
         for (DTidx i { 0 }; i < blocks; ++i) {
             DTidx min_idx { i * BLOCK_SIZE };
             DTidx end { std::min(n, (i + 1) * BLOCK_SIZE) };
@@ -38,12 +36,12 @@ public:
         }
 
         // 2. Build Disjoint Sparse Table only over the block minima
-        for (DTidx h { 1 }; h < levels; ++h) {
+        for (DTidx h { 2 }; h <= levels; ++h) {
             DTidx half { DTidx(1) << (h - 1) };
             DTidx range { half << 1 };
-            DTidx* row { &table[h * blocks] };
+            DTidx h_idx { static_cast<DTidx>(h - 1) };
+            DTidx* row { &table[h_idx * blocks] };
 
-            // #pragma omp parallel for schedule(dynamic)
             for (DTidx center { half }; center < blocks; center += range) {
                 row[center - 1] = table[center - 1];
                 for (DTidx j { 1 }; j < half; ++j) {
@@ -88,8 +86,9 @@ public:
 
         // Intermediate full blocks via DST
         if (DTidx ql { b_l + 1 }, qr { b_r - 1 }; ql <= qr) {
-            int h { std::bit_width(static_cast<unsigned>(ql ^ qr)) };
-            const DTidx* row { &table[h * blocks] };
+            int bw { std::bit_width(static_cast<unsigned>(ql ^ qr)) };
+            DTidx h_idx { static_cast<DTidx>(bw == 0 ? 0 : bw - 1) };
+            const DTidx* row { &table[h_idx * blocks] };
             
             if (raw_data[row[ql]] < raw_data[res]) res = row[ql];
             if (raw_data[row[qr]] < raw_data[res]) res = row[qr];
