@@ -7,7 +7,7 @@
 // RMQ Data Structures
 #include <sdsl/rmq_succinct_rec_new.hpp>
 #include "BD_dst.hpp"
-#include "AI_BD_dst_enhanced.hpp"
+#include "1_dst/AI_BD_dst_enhanced.hpp"
 #include "rmq/includes/RMQRMM64.h"
 
 // Memory tracker

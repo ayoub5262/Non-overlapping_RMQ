@@ -72,7 +72,7 @@ struct Timer {
 // ============================================================
 
 void write_header(ofstream& csv) {
-    // Note: block_size is the element level block size for BD_DST and the
+    // block_size is the element level block size for BD_DST and the
     // BP-sequence super-block size for SDSL, the parameters are not directly
     // comparable, but the same values are swept for both to explore their
     // independent space-time trade-offs.
