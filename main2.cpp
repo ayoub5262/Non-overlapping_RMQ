@@ -6,7 +6,7 @@
 
 // RMQ Data Structures
 #include <sdsl/rmq_succinct_rec_new.hpp>
-#include "BD_dst.hpp"
+#include "BDDST.hpp"
 #include "1_dst/AI_BD_dst_enhanced.hpp"
 #include "rmq/includes/RMQRMM64.h"
 
@@ -64,7 +64,7 @@ static void BM_BD_DST_Build(benchmark::State& state) {
     auto data = gen_random_perm(state.range(0));
     for (auto _ : state) {
         size_t mem_before = malloc_count_current();
-        BDDST<int, uint32_t> bd_dst(data, 256);
+        BDDST<int, uint64_t> bd_dst(data, 256);
         size_t mem_after = malloc_count_current();
         state.counters["bits_per_element"] = ((mem_after - mem_before) * 8.0) / state.range(0);
         benchmark::ClobberMemory();
@@ -77,7 +77,7 @@ static void BM_BD_DST_Enhanced_Build(benchmark::State& state) {
     auto data = gen_random_perm(state.range(0));
     for (auto _ : state) {
         size_t mem_before = malloc_count_current();
-        BigDataDST_Enhanced<int, 256, 8, uint32_t> bd(data);
+        BigDataDST_Enhanced<int, 256, 8, uint64_t> bd(data);
         size_t mem_after = malloc_count_current();
         state.counters["bits_per_element"] = ((mem_after - mem_before) * 8.0) / state.range(0);
         benchmark::ClobberMemory();
@@ -124,7 +124,7 @@ BENCHMARK(BM_RMQRMM64_Build)->Apply(FullSizes)->Iterations(1)->Complexity(benchm
 static void BM_BD_DST_Query(benchmark::State& state) {
     auto data = gen_random_perm(state.range(0));
     size_t mem_before = malloc_count_current();
-    BDDST<int, uint32_t> bd_dst(data, 256);
+    BDDST<int, uint64_t> bd_dst(data, 256);
     size_t mem_after = malloc_count_current();
     state.counters["bits_per_element"] = ((mem_after - mem_before) * 8.0) / state.range(0);
 
@@ -141,7 +141,7 @@ BENCHMARK(BM_BD_DST_Query)->Apply(FullSizes)->Complexity(benchmark::o1);
 static void BM_BD_DST_Enhanced_Query(benchmark::State& state) {
     auto data = gen_random_perm(state.range(0));
     size_t mem_before = malloc_count_current();
-    BigDataDST_Enhanced<int, 256, 8, uint32_t> bd(data);
+    BigDataDST_Enhanced<int, 256, 8, uint64_t> bd(data);
     size_t mem_after = malloc_count_current();
     state.counters["bits_per_element"] = ((mem_after - mem_before) * 8.0) / state.range(0);
 

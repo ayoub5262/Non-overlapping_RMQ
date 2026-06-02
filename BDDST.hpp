@@ -6,14 +6,16 @@
 #include <memory>
 #include <cstdint>
 
-template <typename T, typename Tidx = std::uint32_t>
+#include "BlockScanStrategies.hpp"
+
+template <typename T = int , typename QueryStrategy = LinearScan, typename Tidx = std::uint64_t>
 class BDDST {
     std::unique_ptr<Tidx[]> table; 
-    const std::vector<T>& raw_data;
+    const std::vector<T>& data;
     Tidx BLOCK_SIZE, blocks, levels;
 
 public:
-    BDDST(const std::vector<T>& data, const Tidx B_S) : raw_data(data), BLOCK_SIZE(B_S) {
+    BDDST(const std::vector<T>& arr, const Tidx B_S) : data(arr), BLOCK_SIZE(B_S) {
         Tidx n { static_cast<Tidx>(data.size()) };
         blocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
         levels = blocks <= 1 ? 1 : std::bit_width(static_cast<unsigned>(blocks - 1));
@@ -23,8 +25,9 @@ public:
         for (Tidx i { 0 }; i < blocks; ++i) {
             Tidx min_idx { i * BLOCK_SIZE };
             Tidx end { std::min(n, (i + 1) * BLOCK_SIZE) };
-            for (Tidx j { i * BLOCK_SIZE + 1 }; j < end; ++j) {
-                if (data[j] < data[min_idx]) min_idx = j;
+            if (end > i * BLOCK_SIZE + 1) {
+                Tidx temp {QueryStrategy::scan_block(data, i * BLOCK_SIZE + 1, end - 1)};
+                if (data[temp] < data[min_idx]) min_idx = temp;
             }
             // Base level of the Sparse Table
             table[i] = min_idx; 
@@ -58,34 +61,35 @@ public:
         Tidx res { l };
 
         // Case 1: Query completely within the same block : linear scan
-        if (b_l == b_r) {
-            for (Tidx i = l + 1; i <= r; ++i) {
-                if (raw_data[i] < raw_data[res]) res = i;
-            }
-            return res;
-        }
+        if (b_l == b_r) return QueryStrategy::scan_block(data, l, r);
 
         // Case 2: Query spans multiple blocks
-        // Left boundary 
-        Tidx end_l { (b_l + 1) * BLOCK_SIZE };
-        for (Tidx i { l + 1 }; i < end_l; ++i) {
-            if (raw_data[i] < raw_data[res]) res = i;
-        }
-
-        // Right boundary
-        Tidx start_r { b_r * BLOCK_SIZE };
-        for (Tidx i { start_r }; i <= r; ++i) {
-            if (raw_data[i] < raw_data[res]) res = i;
-        }
-
         // Intermediate full blocks via DST
         if (Tidx ql { b_l + 1 }, qr { b_r - 1 }; ql <= qr) {
             int bw { std::bit_width(static_cast<unsigned>(ql ^ qr)) };
             Tidx h_idx { static_cast<Tidx>(bw == 0 ? 0 : bw - 1) };
             const Tidx* row { &table[h_idx * blocks] };
             
-            if (raw_data[row[ql]] < raw_data[res]) res = row[ql];
-            if (raw_data[row[qr]] < raw_data[res]) res = row[qr];
+            if (data[row[ql]] < data[res]) res = row[ql];
+            if (data[row[qr]] < data[res]) res = row[qr];
+        }
+
+        // Left boundary 
+        if (data[res] >= data[table[b_l]]){
+            Tidx end_l { (b_l + 1) * BLOCK_SIZE};
+            if(l + 1 < end_l){
+                Tidx left_min {QueryStrategy::scan_block(data, l + 1, end_l - 1)};
+                if(data[res] > data[left_min]) res = left_min;
+            }
+        }
+        
+        // Right boundary
+        if (data[res] >= data[table[b_r]]){
+            Tidx start_r { b_r * BLOCK_SIZE };
+            if(start_r <= r){
+                Tidx right_min {QueryStrategy::scan_block(data, start_r, r)};
+                if(data[res] > data[right_min]) res = right_min;
+            }
         }
 
         return res;

@@ -11,7 +11,7 @@
 #include <unistd.h>
 
 #include <sdsl/rmq_succinct_rec_new.hpp>
-#include "BD_dst.hpp"
+#include "BDDST.hpp"
 #include "rmq/includes/RMQRMM64.h"
 
 
@@ -156,7 +156,7 @@ int main() {
 
         size_t mem_before = malloc_count_current();
         timer.start();
-        BDDST<int, uint32_t> dst(data, 256);
+        BDDST<int, uint64_t> dst(data, 256);
         auto [build_real, build_cpu] = timer.stop();
         size_t mem_after = malloc_count_current();
         double bits = (mem_after - mem_before) * 8.0 / n;
@@ -245,7 +245,7 @@ int main() {
     // Build all structures once on the same data
     auto range_data = gen_random_perm(N_RANGE);
 
-    BDDST<int, uint32_t> bd(range_data, 256);
+    BDDST<int, uint64_t> bd(range_data, 256);
     sdsl::rmq_succinct_rec_new<true, 0, 1024> sdsl_r(&range_data);
     RMQRMM64 rmm(range_data.data(), range_data.size());
 

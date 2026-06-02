@@ -66,6 +66,23 @@ target_link_libraries(rmq_bench3
     dl
 )
 
+# --- 3.6. Chrono Benchmark 4 Executable ---
+add_executable(rmq_bench4 main4.cpp)
+target_compile_options(rmq_bench4 PRIVATE -mavx2)
+
+target_include_directories(rmq_bench4 PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}               # BDDST.hpp
+)
+target_link_directories(rmq_bench4 PRIVATE /home/ayoub/lib)
+
+target_link_libraries(rmq_bench4
+    PRIVATE
+    divsufsort
+    divsufsort64
+    malloc_count_lib
+    dl
+)
+
 # --- 4. Google Benchmark (for main2.cpp) ---
 include(FetchContent)
 FetchContent_Declare(
