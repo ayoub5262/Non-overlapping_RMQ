@@ -102,7 +102,7 @@ void write_row(ofstream& csv, const string& algo, int block_size,
     csv.flush();
 }
 
-const vector<uint64_t> full         = {10, 100, 1000, 10'000, 100'000, 1'000'000, 10'000'000, 100'000'000, 1'000'000'000};
+const vector<uint64_t> full         = {10'000, 100'000, 1'000'000, 10'000'000, 100'000'000, 1'000'000'000};
 const vector<uint64_t> query_ranges = {10, 100, 1'000, 10'000, 100'000, 1'000'000, 10'000'000};
 const int NUM_QUERIES = 10'000;
 const int NUM_WARMUP  = 500;   // discarded warm-up iterations before each timed loop
@@ -159,35 +159,35 @@ int main() {
                 switch (rotation % 4) {
                     case 0:
                         run_bd_dst_benchmark<LinearScan>(csv, B, "LinearScan", n, data, timer);
-                        run_bd_dst_benchmark<NaiveLinearScan>(csv, B, "NaiveLinearScan", n, data, timer);
-                        run_bd_dst_benchmark<BranchlessScan>(csv, B, "BranchlessScan", n, data, timer);
+                        run_bd_dst_benchmark<OneLookUpLinearScan>(csv, B, "OneLookUpLinearScan", n, data, timer);
+                        run_bd_dst_benchmark<CmovScan>(csv, B, "CmovScan", n, data, timer);
 #if defined(__AVX2__)
                         run_bd_dst_benchmark<AVX2Scan64b>(csv, B, "AVX2Scan", n, data, timer);
 #endif
                         break;
                     case 1:
-                        run_bd_dst_benchmark<NaiveLinearScan>(csv, B, "NaiveLinearScan", n, data, timer);
-                        run_bd_dst_benchmark<BranchlessScan>(csv, B, "BranchlessScan", n, data, timer);
+                        run_bd_dst_benchmark<OneLookUpLinearScan>(csv, B, "OneLookUpLinearScan", n, data, timer);
+                        run_bd_dst_benchmark<CmovScan>(csv, B, "CmovScan", n, data, timer);
 #if defined(__AVX2__)
                         run_bd_dst_benchmark<AVX2Scan64b>(csv, B, "AVX2Scan", n, data, timer);
 #endif
                         run_bd_dst_benchmark<LinearScan>(csv, B, "LinearScan", n, data, timer);
                         break;
                     case 2:
-                        run_bd_dst_benchmark<BranchlessScan>(csv, B, "BranchlessScan", n, data, timer);
+                        run_bd_dst_benchmark<CmovScan>(csv, B, "CmovScan", n, data, timer);
 #if defined(__AVX2__)
                         run_bd_dst_benchmark<AVX2Scan64b>(csv, B, "AVX2Scan", n, data, timer);
 #endif
                         run_bd_dst_benchmark<LinearScan>(csv, B, "LinearScan", n, data, timer);
-                        run_bd_dst_benchmark<NaiveLinearScan>(csv, B, "NaiveLinearScan", n, data, timer);
+                        run_bd_dst_benchmark<OneLookUpLinearScan>(csv, B, "OneLookUpLinearScan", n, data, timer);
                         break;
                     case 3:
 #if defined(__AVX2__)
                         run_bd_dst_benchmark<AVX2Scan64b>(csv, B, "AVX2Scan", n, data, timer);
 #endif
                         run_bd_dst_benchmark<LinearScan>(csv, B, "LinearScan", n, data, timer);
-                        run_bd_dst_benchmark<NaiveLinearScan>(csv, B, "NaiveLinearScan", n, data, timer);
-                        run_bd_dst_benchmark<BranchlessScan>(csv, B, "BranchlessScan", n, data, timer);
+                        run_bd_dst_benchmark<OneLookUpLinearScan>(csv, B, "OneLookUpLinearScan", n, data, timer);
+                        run_bd_dst_benchmark<CmovScan>(csv, B, "CmovScan", n, data, timer);
                         break;
                 }
             };

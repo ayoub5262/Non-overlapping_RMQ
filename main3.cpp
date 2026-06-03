@@ -17,9 +17,7 @@
 
 using namespace std;
 
-// ============================================================
 //  Cache Flushing
-// ============================================================
 void flush_data_cache(const vector<int>& data) {
     const char* p = reinterpret_cast<const char*>(data.data());
     size_t size = data.size() * sizeof(int);
@@ -29,9 +27,7 @@ void flush_data_cache(const vector<int>& data) {
 }
 
 
-// ============================================================
 //  Data & Query Generators
-// ============================================================
 
 vector<int> gen_random_perm(uint64_t n) {
     vector<int> v(n);
@@ -57,9 +53,7 @@ vector<QueryPair> gen_queries_with_range(uint64_t n, uint64_t range_len, uint64_
     return queries;
 }
 
-// ============================================================
-//  Simple Timer (wall clock + CPU clock)
-// ============================================================
+//  Timer (wall clock + CPU clock)
 
 struct Timer {
     using Clock = chrono::high_resolution_clock;
@@ -81,15 +75,9 @@ struct Timer {
     }
 };
 
-// ============================================================
 //  CSV Output
-// ============================================================
 
 void write_header(ofstream& csv) {
-    // block_size is the element level block size for BD_DST and the
-    // BP-sequence super-block size for SDSL, the parameters are not directly
-    // comparable, but the same values are swept for both to explore their
-    // independent space-time trade-offs.
     csv << "algorithm,block_size,size,scenario,query_range,cpu_time_ns,bits_per_element\n";
 }
 
@@ -104,7 +92,7 @@ void write_row(ofstream& csv, const string& algo, int block_size,
     csv.flush();
 }
 
-const vector<uint64_t> full         = {10, 100, 1000, 10'000, 100'000, 1'000'000, 10'000'000, 100'000'000, 1'000'000'000};
+const vector<uint64_t> full         = {10'000, 100'000, 1'000'000, 10'000'000, 100'000'000, 1'000'000'000};
 const vector<uint64_t> query_ranges = {10, 100, 1'000, 10'000, 100'000, 1'000'000, 10'000'000};
 const int NUM_QUERIES = 10'000;
 const int NUM_WARMUP  = 500;   // discarded warm-up iterations before each timed loop
@@ -120,7 +108,7 @@ void run_sdsl_benchmark(ofstream& csv, uint64_t n, const vector<int>& data, Time
     size_t mem_after = malloc_count_current();
     double bits = (mem_after - mem_before) * 8.0 / n;
 
-    // Emit one build row (query_range = 0 means N/A)
+    // Emit one build row , 0 for query_range
     write_row(csv, "SDSL_new_rec", B, n, "build", 0, build_cpu, bits);
 
     volatile size_t sink = 0;
@@ -151,7 +139,7 @@ void run_bd_dst_benchmark(ofstream& csv, int B, uint64_t n, const vector<int>& d
     size_t mem_after = malloc_count_current();
     double bits = (mem_after - mem_before) * 8.0 / n;
 
-    // Emit one build row (query_range = 0 means N/A)
+    // Emit one build row , 0 for query_range
     write_row(csv, "BD_DST", B, n, "build", 0, build_cpu, bits);
 
     volatile size_t sink = 0;
@@ -184,7 +172,7 @@ int main() {
     for (uint64_t n : full) {
         auto data = gen_random_perm(n);
 
-        // Rotate the strategy order per (n, B) combination to cancel warm-cache bias.
+        // Rotate the strategy order per (n, B) combination to cancel warm cache bias.
         for (int B : block_sizes) {
             auto run_sdsl = [&]() {
                 if (B == 64) run_sdsl_benchmark<64>(csv, n, data, timer);

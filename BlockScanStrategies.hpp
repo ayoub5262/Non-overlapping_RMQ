@@ -6,7 +6,7 @@
 
 
 
-struct NaiveLinearScan {
+struct LinearScan {
     template <typename T, typename Tidx>
     static inline Tidx scan_block(const std::vector<T>& data, Tidx l, Tidx r) {
         Tidx min_idx { l };
@@ -18,7 +18,7 @@ struct NaiveLinearScan {
 };
 
 // 2. Sequential Range Minimum Query
-struct LinearScan {
+struct OneLookUpLinearScan {
 
     // Caches the min_val to avoid double array lookups
     template <typename T, typename Tidx>
@@ -37,7 +37,7 @@ struct LinearScan {
 };
 
 // 3. Branchless Range Minimum Query, Recommended for std::vector
-struct BranchlessScan {
+struct CmovScan {
 
     // Emulates the SWAR philosophy: it uses math/logic instead of branching.
     // Compilers translate this into fast `cmov` (conditional move) instructions.
