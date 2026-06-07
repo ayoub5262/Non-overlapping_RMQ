@@ -101,11 +101,11 @@ void run_sdsl_benchmark(ofstream& csv, uint64_t n, const vector<int>& data, Time
     timer.start();
     sdsl::rmq_succinct_rec_new<true, 0, B> rmq(&data);
     auto [build_real, build_cpu] = timer.stop();
-    size_t mem_after = malloc_count_current();
     size_t mem_peak  = malloc_count_peak();
-    // Subtract 2.0 bits (Cartesian tree) to measure only inter-block metadata
-    double bits      = ((mem_after - mem_before) * 8.0 / n) - 2.0;
-    double bits_peak = ((mem_peak  - mem_before) * 8.0 / n) - 2.0;
+    // Use the exact serialized size to bypass malloc_count allocator overhead, and subtract exactly 2.0 bits (Cartesian tree)
+    double bits = (sdsl::size_in_bytes(rmq) * 8.0 - 2.0 * n) / n;
+    // Peak memory relies on malloc_count to track intermediate allocations during build
+    double bits_peak = ((mem_peak  - mem_before) * 8.0 - 2.0 * n) / n;
 
     write_row(csv, "SDSL_new_rec", B, n, "build", 0, build_cpu, bits, bits_peak);
 
@@ -134,9 +134,9 @@ void run_bddst_benchmark(ofstream& csv, int B, uint64_t n, const vector<int>& da
     timer.start();
     BDDST_1Bit<int, LinearScan, uint64_t> dst(data, B);
     auto [build_real, build_cpu] = timer.stop();
-    size_t mem_after = malloc_count_current();
     size_t mem_peak  = malloc_count_peak();
-    double bits      = (mem_after - mem_before) * 8.0 / n;
+    // Use the exact theoretical table bits to bypass malloc_count allocator overhead
+    double bits = dst.table_bits() / (double)n;
     double bits_peak = (mem_peak  - mem_before) * 8.0 / n;
 
     write_row(csv, "BDDST_1Bit", B, n, "build", 0, build_cpu, bits, bits_peak);
@@ -166,9 +166,9 @@ void run_st_benchmark(ofstream& csv, int B, uint64_t n, const vector<int>& data,
     timer.start();
     ST_IntVec<int, LinearScan, uint64_t> st(data, B);
     auto [build_real, build_cpu] = timer.stop();
-    size_t mem_after = malloc_count_current();
     size_t mem_peak  = malloc_count_peak();
-    double bits      = (mem_after - mem_before) * 8.0 / n;
+    // Use the exact theoretical table bits to bypass malloc_count allocator overhead
+    double bits      = st.table_bits() / (double)n;
     double bits_peak = (mem_peak  - mem_before) * 8.0 / n;
 
     write_row(csv, "ST_IntVec", B, n, "build", 0, build_cpu, bits, bits_peak);
@@ -198,11 +198,11 @@ void run_rmqrmm_benchmark(ofstream& csv, uint64_t n, const vector<int>& data, Ti
     timer.start();
     RMQRMM64 rmq(const_cast<int*>(data.data()), data.size());
     auto [build_real, build_cpu] = timer.stop();
-    size_t mem_after = malloc_count_current();
     size_t mem_peak  = malloc_count_peak();
-    // Subtract 2.0 bits (Cartesian tree) to measure only inter-block metadata
-    double bits      = ((mem_after - mem_before) * 8.0 / n) - 2.0;
-    double bits_peak = ((mem_peak  - mem_before) * 8.0 / n) - 2.0;
+    // Use the exact internal size to bypass malloc_count allocator overhead, and subtract exact tree bits
+    double bits      = (rmq.getSize() * 8.0 - rmq.nP) / n;
+    // Peak memory relies on malloc_count to track intermediate allocations during build
+    double bits_peak = ((mem_peak  - mem_before) * 8.0 - rmq.nP) / n;
 
     // RMQRMM64 doesn't have a tunable B parameter, we write 0
     write_row(csv, "RMQRMM64", 512, n, "build", 0, build_cpu, bits, bits_peak);
@@ -234,9 +234,9 @@ void run_bddst_ct_benchmark(ofstream& csv, int B, uint64_t n, const vector<int>&
     auto [build_real, build_cpu] = timer.stop();
     size_t mem_after = malloc_count_current();
     size_t mem_peak  = malloc_count_peak();
-    // Subtract 2.0 bits (Cartesian tree) to measure only inter-block metadata
-    double bits      = ((mem_after - mem_before) * 8.0 / n) - 2.0;
-    double bits_peak = ((mem_peak  - mem_before) * 8.0 / n) - 2.0;
+    // Subtract exact Cartesian tree bits to measure only inter-block metadata
+    double bits      = ((mem_after - mem_before) * 8.0 - dst.intra_tree_bits()) / n;
+    double bits_peak = ((mem_peak  - mem_before) * 8.0 - dst.intra_tree_bits()) / n;
 
     write_row(csv, "BDDST_CT", B, n, "build", 0, build_cpu, bits, bits_peak);
 

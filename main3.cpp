@@ -106,11 +106,11 @@ void run_sdsl_benchmark(ofstream& csv, uint64_t n, const vector<int>& data, Time
     timer.start();
     sdsl::rmq_succinct_rec_new<true, 0, B> rmq(&data);
     auto [build_real, build_cpu] = timer.stop();
-    size_t mem_after = malloc_count_current();
     size_t mem_peak  = malloc_count_peak();
-    // Subtract 2.0 bits (Cartesian Tree) to compare only the inter-block overhead
-    double bits      = ((mem_after - mem_before) * 8.0 / n) - 2.0;
-    double bits_peak = ((mem_peak  - mem_before) * 8.0 / n) - 2.0;
+    // Use the exact serialized size to bypass malloc_count allocator overhead, and subtract exactly 2.0 bits (Cartesian tree)
+    double bits      = (sdsl::size_in_bytes(rmq) * 8.0 - 2.0 * n) / n;
+    // Peak memory relies on malloc_count to track intermediate allocations during build
+    double bits_peak = ((mem_peak  - mem_before) * 8.0 - 2.0 * n) / n;
 
     // Emit one build row , 0 for query_range
     write_row(csv, "SDSL_new_rec", B, n, "build", 0, build_cpu, bits, bits_peak);
@@ -142,9 +142,9 @@ void run_bddst_benchmark(ofstream& csv, int B, uint64_t n, const vector<int>& da
     timer.start();
     BDDST_1Bit<int, LinearScan, uint64_t> dst(data, B);
     auto [build_real, build_cpu] = timer.stop();
-    size_t mem_after = malloc_count_current();
     size_t mem_peak  = malloc_count_peak();
-    double bits      = (mem_after - mem_before) * 8.0 / n;
+    // Use the exact theoretical table bits to bypass malloc_count allocator overhead
+    double bits      = dst.table_bits() / (double)n;
     double bits_peak = (mem_peak  - mem_before) * 8.0 / n;
 
     // Emit one build row , 0 for query_range

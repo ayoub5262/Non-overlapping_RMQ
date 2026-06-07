@@ -66,8 +66,7 @@ static void BM_BD_DST_Build(benchmark::State& state) {
     for (auto _ : state) {
         size_t mem_before = malloc_count_current();
         BDDST<int, LinearScan, uint64_t> bd_dst(data, 256);
-        size_t mem_after = malloc_count_current();
-        state.counters["bits_per_element"] = ((mem_after - mem_before) * 8.0) / state.range(0);
+        state.counters["bits_per_element"] = bd_dst.table_bits() / (double)state.range(0);
         benchmark::ClobberMemory();
     }
     state.SetComplexityN(state.range(0));
@@ -92,8 +91,7 @@ static void BM_SDSL_RecNew_Build(benchmark::State& state) {
     for (auto _ : state) {
         size_t mem_before = malloc_count_current();
         sdsl::rmq_succinct_rec_new<true, 0, 1024> rmq(&data);
-        size_t mem_after = malloc_count_current();
-        state.counters["bits_per_element"] = ((mem_after - mem_before) * 8.0) / state.range(0);
+        state.counters["bits_per_element"] = (sdsl::size_in_bytes(rmq) * 8.0 - 2.0 * state.range(0)) / state.range(0);
         benchmark::ClobberMemory();
     }
     state.SetComplexityN(state.range(0));
@@ -105,8 +103,7 @@ static void BM_RMQRMM64_Build(benchmark::State& state) {
     for (auto _ : state) {
         size_t mem_before = malloc_count_current();
         RMQRMM64 rmq(data.data(), data.size());
-        size_t mem_after = malloc_count_current();
-        state.counters["bits_per_element"] = ((mem_after - mem_before) * 8.0) / state.range(0);
+        state.counters["bits_per_element"] = (rmq.getSize() * 8.0 - rmq.nP) / state.range(0);
         benchmark::ClobberMemory();
     }
     state.SetComplexityN(state.range(0));
@@ -126,8 +123,7 @@ static void BM_BD_DST_Query(benchmark::State& state) {
     auto data = gen_random_perm(state.range(0));
     size_t mem_before = malloc_count_current();
     BDDST<int, LinearScan, uint64_t> bd_dst(data, 256);
-    size_t mem_after = malloc_count_current();
-    state.counters["bits_per_element"] = ((mem_after - mem_before) * 8.0) / state.range(0);
+    state.counters["bits_per_element"] = bd_dst.table_bits() / (double)state.range(0);
 
     auto queries = gen_random_queries(state.range(0));
     size_t qi = 0;
@@ -160,8 +156,7 @@ static void BM_SDSL_RecNew_Query(benchmark::State& state) {
     auto data = gen_random_perm(state.range(0));
     size_t mem_before = malloc_count_current();
     sdsl::rmq_succinct_rec_new<true, 0, 1024> rmq(&data);
-    size_t mem_after = malloc_count_current();
-    state.counters["bits_per_element"] = ((mem_after - mem_before) * 8.0) / state.range(0);
+    state.counters["bits_per_element"] = (sdsl::size_in_bytes(rmq) * 8.0 - 2.0 * state.range(0)) / state.range(0);
 
     auto queries = gen_random_queries(state.range(0));
     size_t qi = 0;
@@ -177,8 +172,7 @@ static void BM_RMQRMM64_Query(benchmark::State& state) {
     auto data = gen_random_perm(state.range(0));
     size_t mem_before = malloc_count_current();
     RMQRMM64 rmq(data.data(), data.size());
-    size_t mem_after = malloc_count_current();
-    state.counters["bits_per_element"] = ((mem_after - mem_before) * 8.0) / state.range(0);
+    state.counters["bits_per_element"] = (rmq.getSize() * 8.0 - rmq.nP) / state.range(0);
 
     auto queries = gen_random_queries(state.range(0));
     size_t qi = 0;

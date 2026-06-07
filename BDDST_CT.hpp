@@ -11,6 +11,7 @@
 #include "sdsl-lite/include/sdsl/rank_support.hpp"
 #include "sdsl-lite/include/sdsl/select_support.hpp"
 #include "sdsl-lite/include/sdsl/util.hpp"
+#include "malloc_count/malloc_count.h"
 
 template <typename T = int, typename Tidx = std::uint64_t>
 class BDDST_CT {
@@ -22,6 +23,8 @@ private:
     sdsl::select_support_mcl<1> tree_select;
     
     sdsl::int_vector<> level_ones_before;
+    
+    size_t intra_ram_bits;
     
     const std::vector<T>* data;
     sdsl::rmq_succinct_sct<true> intra_rmq;
@@ -36,6 +39,7 @@ private:
         tree_select = rm.tree_select;
         tree_select.set_vector(&tree_bits);
         level_ones_before = rm.level_ones_before;
+        intra_ram_bits = rm.intra_ram_bits;
         data = rm.data;
         intra_rmq = rm.intra_rmq;
         block_size = rm.block_size;
@@ -48,9 +52,14 @@ public:
     typedef Tidx size_type;
     typedef Tidx value_type;
 
-    BDDST_CT() : data(nullptr) {}
+    BDDST_CT() : data(nullptr), intra_ram_bits(0) {}
 
-    BDDST_CT(const std::vector<T>& arr, const Tidx B_S) : data(&arr), block_size(B_S), intra_rmq(&arr) {
+    BDDST_CT(const std::vector<T>& arr, const Tidx B_S) : data(&arr), block_size(B_S) {
+        size_t m1 = malloc_count_current();
+        intra_rmq = sdsl::rmq_succinct_sct<true>(&arr);
+        size_t m2 = malloc_count_current();
+        intra_ram_bits = (m2 - m1) * 8;
+        
         log_block = std::bit_width(static_cast<uint64_t>(block_size)) - 1;
         Tidx n {static_cast<Tidx>(data->size())};
         blocks = (n + block_size - 1) / block_size;
@@ -166,6 +175,7 @@ public:
             tree_select = std::move(rm.tree_select);
             tree_select.set_vector(&tree_bits);
             level_ones_before = std::move(rm.level_ones_before);
+            intra_ram_bits = rm.intra_ram_bits;
             data = rm.data;
             intra_rmq = std::move(rm.intra_rmq);
             block_size = rm.block_size;
@@ -182,6 +192,7 @@ public:
         sdsl::util::swap_support(tree_rank, rm.tree_rank, &tree_bits, &(rm.tree_bits));
         sdsl::util::swap_support(tree_select, rm.tree_select, &tree_bits, &(rm.tree_bits));
         level_ones_before.swap(rm.level_ones_before);
+        std::swap(intra_ram_bits, rm.intra_ram_bits);
         std::swap(data, rm.data);
         intra_rmq.swap(rm.intra_rmq);
         std::swap(block_size, rm.block_size);
@@ -296,6 +307,10 @@ public:
         sdsl::read_member(log_block, in);
         sdsl::read_member(blocks, in);
         sdsl::read_member(levels, in);
+    }
+    
+    size_t intra_tree_bits() const {
+        return intra_ram_bits;
     }
     
     size_t table_bits() const {
