@@ -8,65 +8,51 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
-#include <unistd.h>
+#include <emmintrin.h>
 
-#include <sdsl/rmq_succinct_rec_new.hpp>
-#include "BDDST.hpp"
+#include "sdsl-lite/include/sdsl/rmq_succinct_rec_new.hpp"
+#include "BDDST_1Bit.hpp"
+#include "BDDST_CT.hpp"
+#include "ST_IntVec.hpp"
+#include "BlockScanStrategies.hpp"
 #include "rmq/includes/RMQRMM64.h"
-
-
 #include "malloc_count/malloc_count.h"
 
 using namespace std;
 
-// ============================================================
-//  Data & Query Generators
-// ============================================================
+//  Cache Flushing
+void flush_data_cache(const vector<int>& data) {
+    const char* p = reinterpret_cast<const char*>(data.data());
+    size_t size = data.size() * sizeof(int);
+    for (size_t i = 0; i < size; i += 64) {
+        _mm_clflush(p + i);
+    }
+}
 
-vector<int> gen_random_perm(int n) {
+//  Data & Query Generators
+vector<int> gen_random_perm(uint64_t n) {
     vector<int> v(n);
     iota(v.begin(), v.end(), 0);
     shuffle(v.begin(), v.end(), mt19937(42));
     return v;
 }
 
-struct QueryPair { int l, r; };
+struct QueryPair { uint64_t l, r; };
 
-vector<QueryPair> gen_random_queries(int n, int k = 10000) {
-    vector<QueryPair> queries;
-    queries.reserve(k);
-    mt19937 rng(456);
-    uniform_int_distribution<int> dist(0, n - 1);
-    for (int i = 0; i < k; ++i) {
-        int a = dist(rng), b = dist(rng);
-        if (a > b) swap(a, b);
-        queries.push_back({a, b});
-    }
-    return queries;
-}
-
-// Generates k queries each with exactly query_range = r-l+1
-vector<QueryPair> gen_queries_by_range(int n, int range_len, int k = 10000) {
+vector<QueryPair> gen_queries_with_range(uint64_t n, uint64_t range_len, uint64_t k) {
+    if (range_len > n) return {};
     vector<QueryPair> queries;
     queries.reserve(k);
     mt19937 rng(789);
-    int max_start = n - range_len;
-    if (max_start <= 0) {
-        for (int i = 0; i < k; ++i) queries.push_back({0, n - 1});
-        return queries;
-    }
-    uniform_int_distribution<int> dist(0, max_start);
+    uniform_int_distribution<uint64_t> dist(0, n - range_len);
     for (int i = 0; i < k; ++i) {
-        int l = dist(rng);
-        queries.push_back({l, l + range_len - 1});
+        uint64_t l = dist(rng);
+        queries.push_back({(uint64_t)l, (uint64_t)(l + range_len - 1)});
     }
     return queries;
 }
 
-// ============================================================
-//  Simple Timer (wall clock + CPU clock)
-// ============================================================
-
+//  Timer
 struct Timer {
     using Clock = chrono::high_resolution_clock;
     Clock::time_point wall_start;
@@ -77,199 +63,224 @@ struct Timer {
         cpu_start  = clock();
     }
 
-    // Returns {wall_nanoseconds, cpu_nanoseconds}
     pair<double, double> stop() {
         clock_t cpu_end = clock();
         auto wall_end = Clock::now();
-
         double wall_ns = chrono::duration<double, nano>(wall_end - wall_start).count();
         double cpu_ns  = static_cast<double>(cpu_end - cpu_start) / CLOCKS_PER_SEC * 1e9;
         return {wall_ns, cpu_ns};
     }
 };
 
-// ============================================================
 //  CSV Output
-// ============================================================
-
 void write_header(ofstream& csv) {
-    csv << "algorithm,scenario,size,real_time_ns,cpu_time_ns,bits_per_element\n";
+    csv << "algorithm,block_size,size,scenario,query_range,cpu_time_ns,bits_per_element,bits_per_element_peak\n";
 }
 
-void write_row(ofstream& csv,
-               const string& algo, const string& scenario,
-               long long size, double real_ns, double cpu_ns, double bits)
+void write_row(ofstream& csv, const string& algo, int block_size,
+               uint64_t size, const string& scenario, uint64_t query_range,
+               double cpu_time_ns, double bits, double bits_peak = -1.0)
 {
-    csv << algo << "," << scenario << "," << size << ","
+    csv << algo << "," << block_size << "," << size << ","
+        << scenario << "," << query_range << ","
         << fixed << setprecision(2)
-        << real_ns << "," << cpu_ns << "," << bits << "\n";
+        << cpu_time_ns << "," << bits << "," << bits_peak << "\n";
     csv.flush();
-
-    cout << setw(14) << algo
-              << " | " << setw(5) << scenario
-              << " | n=" << setw(12) << size
-              << " | real=" << setw(16) << fixed << setprecision(2) << real_ns << " ns"
-              << " | bits=" << setw(8) << bits << "\n";
 }
 
-// Extra write_row for the query-range experiment, includes query_range column
-void write_row_ranged(ofstream& csv,
-                      const string& algo, long long n,
-                      int range_len, double real_ns, double cpu_ns)
-{
-    csv << algo << ",QueryByRange," << n << ","
-        << fixed << setprecision(2)
-        << real_ns << "," << cpu_ns << "," << range_len << "\n";
-    csv.flush();
-
-    cout << setw(14) << algo
-              << " | QueryByRange"
-              << " | n=" << setw(10) << n
-              << " | range=" << setw(10) << range_len
-              << " | real=" << setw(12) << fixed << setprecision(2) << real_ns << " ns\n";
-}
-
-// ============================================================
-//  Benchmark sizes
-//  full:  10 to 10^9  
-// ============================================================
-
-const vector<long long> full  = {10, 100, 1000, 10'000, 100'000, 1'000'000, 10'000'000, 100'000'000, 1'000'000'000};
-
+const vector<uint64_t> full         = {10'000, 100'000, 1'000'000, 10'000'000, 100'000'000, 1'000'000'000};
+const vector<uint64_t> query_ranges = {10, 100, 1'000, 10'000, 100'000, 1'000'000, 10'000'000, 100'000'000};
 const int NUM_QUERIES = 10'000;
+const int NUM_WARMUP  = 500;
 
+template<int B>
+void run_sdsl_benchmark(ofstream& csv, uint64_t n, const vector<int>& data, Timer& timer) {
+    flush_data_cache(data);
+    malloc_count_reset_peak();
+    size_t mem_before = malloc_count_current();
+    timer.start();
+    sdsl::rmq_succinct_rec_new<true, 0, B> rmq(&data);
+    auto [build_real, build_cpu] = timer.stop();
+    size_t mem_after = malloc_count_current();
+    size_t mem_peak  = malloc_count_peak();
+    // Subtract 2.0 bits (Cartesian tree) to measure only inter-block metadata
+    double bits      = ((mem_after - mem_before) * 8.0 / n) - 2.0;
+    double bits_peak = ((mem_peak  - mem_before) * 8.0 / n) - 2.0;
 
+    write_row(csv, "SDSL_new_rec", B, n, "build", 0, build_cpu, bits, bits_peak);
 
-int main() {
-    ofstream csv("results.csv");
-    write_header(csv);
+    volatile size_t sink = 0;
+    for (uint64_t range_len : query_ranges) {
+        auto queries = gen_queries_with_range(n, range_len, NUM_QUERIES);
+        if (queries.empty()) continue;
 
-    Timer timer;
+        flush_data_cache(data);
+        for (int i = 0; i < NUM_WARMUP; ++i)
+            sink = rmq(queries[i % NUM_QUERIES].l, queries[i % NUM_QUERIES].r);
 
-    // ────────────────────────────────────────────────────────
-    //  3. BD_DST  
-    // ────────────────────────────────────────────────────────
-    cout << "\n=== BD_DST ===\n";
-    for (long long n : full) {
-        auto data    = gen_random_perm(n);
-        auto queries = gen_random_queries(n, NUM_QUERIES);
-
-        size_t mem_before = malloc_count_current();
-        timer.start();
-        BDDST<int, uint64_t> dst(data, 256);
-        auto [build_real, build_cpu] = timer.stop();
-        size_t mem_after = malloc_count_current();
-        double bits = (mem_after - mem_before) * 8.0 / n;
-
-        write_row(csv, "BD_DST", "Build", n, build_real, build_cpu, bits);
-
-        volatile size_t sink = 0;
-        timer.start();
-        for (int i = 0; i < NUM_QUERIES; ++i)
-            sink = dst.query(queries[i].l, queries[i].r);
-        auto [query_real, query_cpu] = timer.stop();
-
-        write_row(csv, "BD_DST", "Query", n,
-                  query_real / NUM_QUERIES, query_cpu / NUM_QUERIES, bits);
-    }
-
-
-    // ────────────────────────────────────────────────────────
-    //  4. SDSL RecNew  
-    // ────────────────────────────────────────────────────────
-    cout << "\n=== SDSL RecNew ===\n";
-    for (long long n : full) {
-        auto data    = gen_random_perm(n);
-        auto queries = gen_random_queries(n, NUM_QUERIES);
-
-        size_t mem_before = malloc_count_current();
-        timer.start();
-        sdsl::rmq_succinct_rec_new<true, 0, 1024> rmq(&data);
-        auto [build_real, build_cpu] = timer.stop();
-        size_t mem_after = malloc_count_current();
-        double bits = (mem_after - mem_before) * 8.0 / n;
-
-        write_row(csv, "SDSL_RecNew", "Build", n, build_real, build_cpu, bits);
-
-        volatile size_t sink = 0;
         timer.start();
         for (int i = 0; i < NUM_QUERIES; ++i)
             sink = rmq(queries[i].l, queries[i].r);
         auto [query_real, query_cpu] = timer.stop();
 
-        write_row(csv, "SDSL_RecNew", "Query", n,
-                  query_real / NUM_QUERIES, query_cpu / NUM_QUERIES, bits);
+        write_row(csv, "SDSL_new_rec", B, n, "query", range_len, query_cpu / NUM_QUERIES, bits);
     }
+}
 
-    // ────────────────────────────────────────────────────────
-    //  5. RMQRMM64 
-    // ────────────────────────────────────────────────────────
-    cout << "\n=== RMQRMM64 ===\n";
-    for (long long n : full) {
-        auto data    = gen_random_perm(n);
-        auto queries = gen_random_queries(n, NUM_QUERIES);
+void run_bddst_benchmark(ofstream& csv, int B, uint64_t n, const vector<int>& data, Timer& timer) {
+    flush_data_cache(data);
+    malloc_count_reset_peak();
+    size_t mem_before = malloc_count_current();
+    timer.start();
+    BDDST_1Bit<int, LinearScan, uint64_t> dst(data, B);
+    auto [build_real, build_cpu] = timer.stop();
+    size_t mem_after = malloc_count_current();
+    size_t mem_peak  = malloc_count_peak();
+    double bits      = (mem_after - mem_before) * 8.0 / n;
+    double bits_peak = (mem_peak  - mem_before) * 8.0 / n;
 
-        size_t mem_before = malloc_count_current();
+    write_row(csv, "BDDST_1Bit", B, n, "build", 0, build_cpu, bits, bits_peak);
+
+    volatile size_t sink = 0;
+    for (uint64_t range_len : query_ranges) {
+        auto queries = gen_queries_with_range(n, range_len, NUM_QUERIES);
+        if (queries.empty()) continue;
+
+        flush_data_cache(data);
+        for (int i = 0; i < NUM_WARMUP; ++i)
+            sink = dst.query(queries[i % NUM_QUERIES].l, queries[i % NUM_QUERIES].r);
+
         timer.start();
-        RMQRMM64 rmq(data.data(), data.size());
-        auto [build_real, build_cpu] = timer.stop();
-        size_t mem_after = malloc_count_current();
-        double bits = (mem_after - mem_before) * 8.0 / n;
+        for (int i = 0; i < NUM_QUERIES; ++i)
+            sink = dst.query(queries[i].l, queries[i].r);
+        auto [query_real, query_cpu] = timer.stop();
 
-        write_row(csv, "RMQRMM64", "Build", n, build_real, build_cpu, bits);
+        write_row(csv, "BDDST_1Bit", B, n, "query", range_len, query_cpu / NUM_QUERIES, bits);
+    }
+}
 
-        volatile size_t sink = 0;
+void run_st_benchmark(ofstream& csv, int B, uint64_t n, const vector<int>& data, Timer& timer) {
+    flush_data_cache(data);
+    malloc_count_reset_peak();
+    size_t mem_before = malloc_count_current();
+    timer.start();
+    ST_IntVec<int, LinearScan, uint64_t> st(data, B);
+    auto [build_real, build_cpu] = timer.stop();
+    size_t mem_after = malloc_count_current();
+    size_t mem_peak  = malloc_count_peak();
+    double bits      = (mem_after - mem_before) * 8.0 / n;
+    double bits_peak = (mem_peak  - mem_before) * 8.0 / n;
+
+    write_row(csv, "ST_IntVec", B, n, "build", 0, build_cpu, bits, bits_peak);
+
+    volatile size_t sink = 0;
+    for (uint64_t range_len : query_ranges) {
+        auto queries = gen_queries_with_range(n, range_len, NUM_QUERIES);
+        if (queries.empty()) continue;
+
+        flush_data_cache(data);
+        for (int i = 0; i < NUM_WARMUP; ++i)
+            sink = st.query(queries[i % NUM_QUERIES].l, queries[i % NUM_QUERIES].r);
+
+        timer.start();
+        for (int i = 0; i < NUM_QUERIES; ++i)
+            sink = st.query(queries[i].l, queries[i].r);
+        auto [query_real, query_cpu] = timer.stop();
+
+        write_row(csv, "ST_IntVec", B, n, "query", range_len, query_cpu / NUM_QUERIES, bits);
+    }
+}
+
+void run_rmqrmm_benchmark(ofstream& csv, uint64_t n, const vector<int>& data, Timer& timer) {
+    flush_data_cache(data);
+    malloc_count_reset_peak();
+    size_t mem_before = malloc_count_current();
+    timer.start();
+    RMQRMM64 rmq(const_cast<int*>(data.data()), data.size());
+    auto [build_real, build_cpu] = timer.stop();
+    size_t mem_after = malloc_count_current();
+    size_t mem_peak  = malloc_count_peak();
+    // Subtract 2.0 bits (Cartesian tree) to measure only inter-block metadata
+    double bits      = ((mem_after - mem_before) * 8.0 / n) - 2.0;
+    double bits_peak = ((mem_peak  - mem_before) * 8.0 / n) - 2.0;
+
+    // RMQRMM64 doesn't have a tunable B parameter, we write 0
+    write_row(csv, "RMQRMM64", 512, n, "build", 0, build_cpu, bits, bits_peak);
+
+    volatile size_t sink = 0;
+    for (uint64_t range_len : query_ranges) {
+        auto queries = gen_queries_with_range(n, range_len, NUM_QUERIES);
+        if (queries.empty()) continue;
+
+        flush_data_cache(data);
+        for (int i = 0; i < NUM_WARMUP; ++i)
+            sink = rmq.queryRMQ(queries[i % NUM_QUERIES].l, queries[i % NUM_QUERIES].r);
+
         timer.start();
         for (int i = 0; i < NUM_QUERIES; ++i)
             sink = rmq.queryRMQ(queries[i].l, queries[i].r);
         auto [query_real, query_cpu] = timer.stop();
 
-        write_row(csv, "RMQRMM64", "Query", n,
-                  query_real / NUM_QUERIES, query_cpu / NUM_QUERIES, bits);
+        write_row(csv, "RMQRMM64", 512, n, "query", range_len, query_cpu / NUM_QUERIES, bits);
     }
+}
 
+void run_bddst_ct_benchmark(ofstream& csv, int B, uint64_t n, const vector<int>& data, Timer& timer) {
+    flush_data_cache(data);
+    malloc_count_reset_peak();
+    size_t mem_before = malloc_count_current();
+    timer.start();
+    BDDST_CT<int, uint64_t> dst(data, B);
+    auto [build_real, build_cpu] = timer.stop();
+    size_t mem_after = malloc_count_current();
+    size_t mem_peak  = malloc_count_peak();
+    // Subtract 2.0 bits (Cartesian tree) to measure only inter-block metadata
+    double bits      = ((mem_after - mem_before) * 8.0 / n) - 2.0;
+    double bits_peak = ((mem_peak  - mem_before) * 8.0 / n) - 2.0;
 
-    // ────────────────────────────────────────────────────────
-    //  6. Query-Range Experiment
-    //     Fixed n = 10^7, vary query range length from 10 to 10^7
-    //     Shows how query time changes with range length
-    //     if short queries stay in L1 cache and long queries cause L3/RAM misses
-    //
-    //     bits_per_element column is repurposed for query_range here.
-    // ────────────────────────────────────────────────────────
-    cout << "\n=== Query-Range Experiment (n=10^7) ===\n";
+    write_row(csv, "BDDST_CT", B, n, "build", 0, build_cpu, bits, bits_peak);
 
-    const long long N_RANGE = 10'000'000;
-    const vector<int> range_sizes = {10, 100, 1000, 10'000, 100'000, 1'000'000, 10'000'000};
+    volatile size_t sink = 0;
+    for (uint64_t range_len : query_ranges) {
+        auto queries = gen_queries_with_range(n, range_len, NUM_QUERIES);
+        if (queries.empty()) continue;
 
-    // Build all structures once on the same data
-    auto range_data = gen_random_perm(N_RANGE);
+        flush_data_cache(data);
+        for (int i = 0; i < NUM_WARMUP; ++i)
+            sink = dst(queries[i % NUM_QUERIES].l, queries[i % NUM_QUERIES].r);
 
-    BDDST<int, uint64_t> bd(range_data, 256);
-    sdsl::rmq_succinct_rec_new<true, 0, 1024> sdsl_r(&range_data);
-    RMQRMM64 rmm(range_data.data(), range_data.size());
+        timer.start();
+        for (int i = 0; i < NUM_QUERIES; ++i)
+            sink = dst(queries[i].l, queries[i].r);
+        auto [query_real, query_cpu] = timer.stop();
 
-    for (int range_len : range_sizes) {
-        auto q = gen_queries_by_range(N_RANGE, range_len, NUM_QUERIES);
+        write_row(csv, "BDDST_CT", B, n, "query", range_len, query_cpu / NUM_QUERIES, bits);
+    }
+}
 
-        // BD_DST
-        { volatile size_t s = 0; timer.start();
-          for (int i = 0; i < NUM_QUERIES; ++i) s = bd.query(q[i].l, q[i].r);
-          auto [r, c] = timer.stop();
-          write_row_ranged(csv, "BD_DST", N_RANGE, range_len, r/NUM_QUERIES, c/NUM_QUERIES); }
+int main() {
+    ofstream csv("results.csv");
+    write_header(csv);
+    Timer timer;
 
-        // SDSL_RecNew
-        { volatile size_t s = 0; timer.start();
-          for (int i = 0; i < NUM_QUERIES; ++i) s = sdsl_r(q[i].l, q[i].r);
-          auto [r, c] = timer.stop();
-          write_row_ranged(csv, "SDSL_RecNew", N_RANGE, range_len, r/NUM_QUERIES, c/NUM_QUERIES); }
+    int rotation = 0;
+    for (uint64_t n : full) {
+        auto data = gen_random_perm(n);
 
-        // RMQRMM64
-        { volatile size_t s = 0; timer.start();
-          for (int i = 0; i < NUM_QUERIES; ++i) s = rmm.queryRMQ(q[i].l, q[i].r);
-          auto [r, c] = timer.stop();
-          write_row_ranged(csv, "RMQRMM64", N_RANGE, range_len, r/NUM_QUERIES, c/NUM_QUERIES); }
+        auto run_all = [&]() {
+            int r = rotation % 5;
+            for(int i = 0; i < 5; ++i) {
+                int algo = (r + i) % 5;
+                if(algo == 0) run_sdsl_benchmark<1024>(csv, n, data, timer);
+                if(algo == 1) run_bddst_benchmark(csv, 2048, n, data, timer);
+                if(algo == 2) run_rmqrmm_benchmark(csv, n, data, timer);
+                if(algo == 3) run_st_benchmark(csv, 2048, n, data, timer);
+                if(algo == 4) run_bddst_ct_benchmark(csv, 2048, n, data, timer);
+            }
+        };
 
+        run_all();
+        rotation++;
     }
 
     csv.close();

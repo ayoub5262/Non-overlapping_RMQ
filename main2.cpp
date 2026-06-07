@@ -5,8 +5,9 @@
 #include <algorithm>
 
 // RMQ Data Structures
-#include <sdsl/rmq_succinct_rec_new.hpp>
+#include "sdsl-lite/include/sdsl/rmq_succinct_rec_new.hpp"
 #include "BDDST.hpp"
+#include "BlockScanStrategies.hpp"
 #include "1_dst/AI_BD_dst_enhanced.hpp"
 #include "rmq/includes/RMQRMM64.h"
 
@@ -64,7 +65,7 @@ static void BM_BD_DST_Build(benchmark::State& state) {
     auto data = gen_random_perm(state.range(0));
     for (auto _ : state) {
         size_t mem_before = malloc_count_current();
-        BDDST<int, uint64_t> bd_dst(data, 256);
+        BDDST<int, LinearScan, uint64_t> bd_dst(data, 256);
         size_t mem_after = malloc_count_current();
         state.counters["bits_per_element"] = ((mem_after - mem_before) * 8.0) / state.range(0);
         benchmark::ClobberMemory();
@@ -124,7 +125,7 @@ BENCHMARK(BM_RMQRMM64_Build)->Apply(FullSizes)->Iterations(1)->Complexity(benchm
 static void BM_BD_DST_Query(benchmark::State& state) {
     auto data = gen_random_perm(state.range(0));
     size_t mem_before = malloc_count_current();
-    BDDST<int, uint64_t> bd_dst(data, 256);
+    BDDST<int, LinearScan, uint64_t> bd_dst(data, 256);
     size_t mem_after = malloc_count_current();
     state.counters["bits_per_element"] = ((mem_after - mem_before) * 8.0) / state.range(0);
 

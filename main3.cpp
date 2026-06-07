@@ -10,8 +10,8 @@
 #include <string>
 #include <emmintrin.h>
 
-#include <sdsl/rmq_succinct_rec_new.hpp>
-#include "BDDST.hpp"
+#include "sdsl-lite/include/sdsl/rmq_succinct_rec_new.hpp"
+#include "BDDST_1Bit.hpp"
 #include "BlockScanStrategies.hpp"
 #include "malloc_count/malloc_count.h"
 
@@ -78,17 +78,17 @@ struct Timer {
 //  CSV Output
 
 void write_header(ofstream& csv) {
-    csv << "algorithm,block_size,size,scenario,query_range,cpu_time_ns,bits_per_element\n";
+    csv << "algorithm,block_size,size,scenario,query_range,cpu_time_ns,bits_per_element,bits_per_element_peak\n";
 }
 
 void write_row(ofstream& csv, const string& algo, int block_size,
                uint64_t size, const string& scenario, uint64_t query_range,
-               double cpu_time_ns, double bits)
+               double cpu_time_ns, double bits, double bits_peak = -1.0)
 {
     csv << algo << "," << block_size << "," << size << ","
         << scenario << "," << query_range << ","
         << fixed << setprecision(2)
-        << cpu_time_ns << "," << bits << "\n";
+        << cpu_time_ns << "," << bits << "," << bits_peak << "\n";
     csv.flush();
 }
 
@@ -101,15 +101,19 @@ const int NUM_WARMUP  = 500;   // discarded warm-up iterations before each timed
 template<int B>
 void run_sdsl_benchmark(ofstream& csv, uint64_t n, const vector<int>& data, Timer& timer) {
     flush_data_cache(data);
+    malloc_count_reset_peak();
     size_t mem_before = malloc_count_current();
     timer.start();
     sdsl::rmq_succinct_rec_new<true, 0, B> rmq(&data);
     auto [build_real, build_cpu] = timer.stop();
     size_t mem_after = malloc_count_current();
-    double bits = (mem_after - mem_before) * 8.0 / n;
+    size_t mem_peak  = malloc_count_peak();
+    // Subtract 2.0 bits (Cartesian Tree) to compare only the inter-block overhead
+    double bits      = ((mem_after - mem_before) * 8.0 / n) - 2.0;
+    double bits_peak = ((mem_peak  - mem_before) * 8.0 / n) - 2.0;
 
     // Emit one build row , 0 for query_range
-    write_row(csv, "SDSL_new_rec", B, n, "build", 0, build_cpu, bits);
+    write_row(csv, "SDSL_new_rec", B, n, "build", 0, build_cpu, bits, bits_peak);
 
     volatile size_t sink = 0;
     for (uint64_t range_len : query_ranges) {
@@ -130,17 +134,21 @@ void run_sdsl_benchmark(ofstream& csv, uint64_t n, const vector<int>& data, Time
     }
 }
 
-void run_bd_dst_benchmark(ofstream& csv, int B, uint64_t n, const vector<int>& data, Timer& timer) {
+
+void run_bddst_benchmark(ofstream& csv, int B, uint64_t n, const vector<int>& data, Timer& timer) {
     flush_data_cache(data);
+    malloc_count_reset_peak();
     size_t mem_before = malloc_count_current();
     timer.start();
-    BDDST<int, LinearScan, uint64_t> dst(data, B);
+    BDDST_1Bit<int, LinearScan, uint64_t> dst(data, B);
     auto [build_real, build_cpu] = timer.stop();
     size_t mem_after = malloc_count_current();
-    double bits = (mem_after - mem_before) * 8.0 / n;
+    size_t mem_peak  = malloc_count_peak();
+    double bits      = (mem_after - mem_before) * 8.0 / n;
+    double bits_peak = (mem_peak  - mem_before) * 8.0 / n;
 
     // Emit one build row , 0 for query_range
-    write_row(csv, "BD_DST", B, n, "build", 0, build_cpu, bits);
+    write_row(csv, "BDDST3_1Bit", B, n, "build", 0, build_cpu, bits, bits_peak);
 
     volatile size_t sink = 0;
     for (uint64_t range_len : query_ranges) {
@@ -157,7 +165,7 @@ void run_bd_dst_benchmark(ofstream& csv, int B, uint64_t n, const vector<int>& d
             sink = dst.query(queries[i].l, queries[i].r);
         auto [query_real, query_cpu] = timer.stop();
 
-        write_row(csv, "BD_DST", B, n, "query", range_len, query_cpu / NUM_QUERIES, bits);
+        write_row(csv, "BDDST_1Bit", B, n, "query", range_len, query_cpu / NUM_QUERIES, bits);
     }
 }
 
@@ -185,9 +193,9 @@ int main() {
 
             if (rotation % 2 == 0) {
                 run_sdsl();
-                run_bd_dst_benchmark(csv, B, n, data, timer);
+                run_bddst_benchmark(csv, B, n, data, timer);
             } else {
-                run_bd_dst_benchmark(csv, B, n, data, timer);
+                run_bddst_benchmark(csv, B, n, data, timer);
                 run_sdsl();
             }
             rotation++;

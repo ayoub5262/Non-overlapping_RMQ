@@ -114,3 +114,39 @@ target_link_libraries(main_bench
     dl
     benchmark::benchmark
 )
+
+# --- 3.7. Chrono Benchmark 5 Executable ---
+add_executable(rmq_bench5 main5.cpp)
+
+target_include_directories(rmq_bench5 PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}               # DST variants
+    /home/ayoub/include                       # sdsl headers (system-installed)
+)
+target_link_directories(rmq_bench5 PRIVATE /home/ayoub/lib)
+
+target_link_libraries(rmq_bench5
+    PRIVATE
+    sdsl
+    divsufsort
+    divsufsort64
+    malloc_count_lib
+    dl
+)
+
+# --- 3.8. ST vs BDDST Benchmark ---
+add_executable(st_vs_bddst STvsBDDST.cpp)
+
+target_include_directories(st_vs_bddst PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    /home/ayoub/include
+)
+target_link_directories(st_vs_bddst PRIVATE /home/ayoub/lib)
+
+target_link_libraries(st_vs_bddst
+    PRIVATE
+    sdsl
+    divsufsort
+    divsufsort64
+    malloc_count_lib
+    dl
+)

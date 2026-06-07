@@ -84,21 +84,17 @@ struct Timer {
 // ============================================================
 
 void write_header(ofstream& csv) {
-    // block_size is the element level block size for BD_DST and the
-    // BP-sequence super-block size for SDSL, the parameters are not directly
-    // comparable, but the same values are swept for both to explore their
-    // independent space-time trade-offs.
-    csv << "algorithm,block_size,size,scenario,query_range,cpu_time_ns,bits_per_element\n";
+    csv << "algorithm,block_size,size,scenario,query_range,cpu_time_ns,bits_per_element,bits_per_element_peak\n";
 }
 
 void write_row(ofstream& csv, const string& algo, int block_size,
                uint64_t size, const string& scenario, uint64_t query_range,
-               double cpu_time_ns, double bits)
+               double cpu_time_ns, double bits, double bits_peak = -1.0)
 {
     csv << algo << "," << block_size << "," << size << ","
         << scenario << "," << query_range << ","
         << fixed << setprecision(2)
-        << cpu_time_ns << "," << bits << "\n";
+        << cpu_time_ns << "," << bits << "," << bits_peak << "\n";
     csv.flush();
 }
 
@@ -111,15 +107,18 @@ const int NUM_WARMUP  = 500;   // discarded warm-up iterations before each timed
 template<typename Strategy>
 void run_bd_dst_benchmark(ofstream& csv, int B, const string& strategy_name, uint64_t n, const vector<int>& data, Timer& timer) {
     flush_data_cache(data);
+    malloc_count_reset_peak();
     size_t mem_before = malloc_count_current();
     timer.start();
     BDDST<int, Strategy, uint64_t> dst(data, B);
     auto [build_real, build_cpu] = timer.stop();
     size_t mem_after = malloc_count_current();
-    double bits = (mem_after - mem_before) * 8.0 / n;
+    size_t mem_peak  = malloc_count_peak();
+    double bits      = (mem_after - mem_before) * 8.0 / n;
+    double bits_peak = (mem_peak  - mem_before) * 8.0 / n;
 
     // Emit one build row (query_range = 0 means N/A)
-    write_row(csv, "BD_DST_" + strategy_name, B, n, "build", 0, build_cpu, bits);
+    write_row(csv, "BD_DST_" + strategy_name, B, n, "build", 0, build_cpu, bits, bits_peak);
 
     volatile size_t sink = 0;
     for (uint64_t range_len : query_ranges) {

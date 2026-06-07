@@ -9,13 +9,13 @@
 #include "BlockScanStrategies.hpp"
 
 template <typename T = int , typename QueryStrategy = LinearScan, typename Tidx = std::uint64_t>
-class BDDST {
+class BDDST_Block_Shift {
     std::unique_ptr<Tidx[]> table; 
     const std::vector<T>& data;
     Tidx BLOCK_SIZE, blocks, levels, BLOCK_SHIFT;
 
 public:
-    BDDST(const std::vector<T>& arr, const Tidx B_S) : data(arr), BLOCK_SIZE(B_S) {
+    BDDST_Block_Shift(const std::vector<T>& arr, const Tidx B_S) : data(arr), BLOCK_SIZE(B_S) {
         BLOCK_SHIFT = std::bit_width(static_cast<unsigned>(BLOCK_SIZE)) - 1 ;
         Tidx n { static_cast<Tidx>(data.size()) };
         blocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
@@ -24,9 +24,9 @@ public:
 
         // Calculate minima per block
         for (Tidx i { 0 }; i < blocks; ++i) {
-            Tidx min_idx { i * BLOCK_SIZE };
+            Tidx min_idx { (i << BLOCK_SHIFT) };
             Tidx end { std::min(n, (i + 1) * BLOCK_SIZE) };
-            if (end > i * BLOCK_SIZE + 1) {
+            if (end > (i << BLOCK_SHIFT) + 1) {
                 Tidx temp {QueryStrategy::scan_block(data, i * BLOCK_SIZE + 1, end - 1)};
                 if (data[temp] < data[min_idx]) min_idx = temp;
             }
@@ -83,7 +83,7 @@ public:
 
         // Left boundary 
         if (data[res] >= data[table[b_l]]){
-            Tidx end_l { (b_l + 1) * BLOCK_SIZE};
+            Tidx end_l { (b_l + 1) << BLOCK_SHIFT };
             if(l + 1 < end_l){
                 Tidx left_min {QueryStrategy::scan_block(data, l + 1, end_l - 1)};
                 if(data[res] > data[left_min]) res = left_min;
@@ -92,7 +92,7 @@ public:
         
         // Right boundary
         if (data[res] >= data[table[b_r]]){
-            Tidx start_r { b_r * BLOCK_SIZE };
+            Tidx start_r { b_r << BLOCK_SHIFT  };
             if(start_r <= r){
                 Tidx right_min {QueryStrategy::scan_block(data, start_r, r)};
                 if(data[res] > data[right_min]) res = right_min;

@@ -17,6 +17,22 @@ struct LinearScan {
     }
 };
 
+struct LinearSkipScan {
+    template <typename T, typename Tidx>
+    static inline Tidx scan_block(const std::vector<T>& data, Tidx l, Tidx r, T target_min = std::numeric_limits<T>::lowest()) {
+        Tidx min_idx { l };
+        if (data[min_idx] == target_min) return min_idx;
+        for (Tidx i { l + 1 }; i <= r; ++i) {
+            if (data[i] < data[min_idx]) {
+                min_idx = i;
+                if (data[min_idx] == target_min) return min_idx;
+                
+            }
+        }
+        return min_idx;
+    }
+};
+
 // 2. Sequential Range Minimum Query
 struct OneLookUpLinearScan {
 
