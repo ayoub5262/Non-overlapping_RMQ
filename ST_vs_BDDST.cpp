@@ -9,20 +9,15 @@
 #include <iomanip>
 #include <string>
 
-#include "BDDST.hpp"
-#include "ST.hpp"
-#include "BDDST_final.hpp"
-#include "BDDST_final3.hpp"
-#include "ST_intvec2.hpp"
+#include "BDDST_1Bit.hpp"
+#include "ST_IntVec.hpp"
 #include "BlockScanStrategies.hpp"
 #include "malloc_count/malloc_count.h"
 #include <emmintrin.h>
 
 using namespace std;
 
-// ============================================================
 //  Cache Flushing
-// ============================================================
 void flush_data_cache(const vector<int>& data) {
     const char* p = reinterpret_cast<const char*>(data.data());
     size_t size = data.size() * sizeof(int);
@@ -31,10 +26,7 @@ void flush_data_cache(const vector<int>& data) {
     }
 }
 
-// ============================================================
 //  Data & Query Generators
-// ============================================================
-
 vector<int> gen_random_perm(uint64_t n) {
     vector<int> v(n);
     iota(v.begin(), v.end(), 0);
@@ -59,10 +51,7 @@ vector<QueryPair> gen_queries_with_range(uint64_t n, uint64_t range_len, int k) 
     return queries;
 }
 
-// ============================================================
 //  Simple Timer (wall clock + CPU clock)
-// ============================================================
-
 struct Timer {
     using Clock = chrono::high_resolution_clock;
     Clock::time_point wall_start;
@@ -83,10 +72,7 @@ struct Timer {
     }
 };
 
-// ============================================================
 //  CSV Output
-// ============================================================
-
 void write_header(ofstream& csv) {
     csv << "algorithm,block_size,size,scenario,query_range,cpu_time_ns,bits_per_element,bits_per_element_peak,theoretical_bits\n";
 }
@@ -108,22 +94,21 @@ const int NUM_QUERIES = 10'000;
 const int NUM_WARMUP  = 500;   // discarded warm-up iterations before each timed loop
 
 
-template<typename DSTType>
-void run_benchmark(ofstream& csv, int B, const string& ds_name, uint64_t n, const vector<int>& data, Timer& timer) {
+template<typename STType>
+void run_ST(ofstream& csv, int B, const string& ds_name, uint64_t n, const vector<int>& data, Timer& timer) {
     flush_data_cache(data);
     malloc_count_reset_peak();
     size_t mem_before = malloc_count_current();
     timer.start();
-    DSTType dst(data, B);
+    STType dst(data, B);
     auto [build_real, build_cpu] = timer.stop();
     size_t mem_after = malloc_count_current();
     size_t mem_peak  = malloc_count_peak();
     double bits      = (mem_after - mem_before) * 8.0 / n;
     double bits_peak = (mem_peak  - mem_before) * 8.0 / n;
-    double theory_bits = static_cast<double>(dst.table_bits()) / n;
 
-    // Emit one build row (query_range = 0 means N/A)
-    write_row(csv, ds_name, B, n, "build", 0, build_cpu, bits, bits_peak, theory_bits);
+    // Emit one build row 
+    write_row(csv, ds_name, B, n, "build", 0, build_cpu, bits, bits_peak);
 
     volatile size_t sink = 0;
     for (uint64_t range_len : query_ranges) {
@@ -144,62 +129,31 @@ void run_benchmark(ofstream& csv, int B, const string& ds_name, uint64_t n, cons
     }
 }
 
+
+
 int main() {
-    ofstream csv("STvsBDDST.csv");
+    ofstream csv("st_vs_bddst.csv");
     write_header(csv);
     Timer timer;
 
     vector<int> block_sizes = {256, 512, 1024, 2048, 4096, 8192};
 
-    // Rotate the strategy order per (n, B) combination to cancel warm-cache bias.
-    // Each strategy takes turns running first (cold cache) and last (warm cache).
     int rotation = 0;
     for (uint64_t n : full) {
         auto data = gen_random_perm(n);
 
         for (int B : block_sizes) {
-            // Use the rotation index to decide the order of strategies
             auto run_all = [&]() {
-                using T1 = BDDST<int, LinearScan, uint64_t>;
-                using T2 = ST<int, LinearScan, uint64_t>;
-                using T3 = BDDST_Final<int, LinearScan, uint64_t>;
-                using T4 = ST_IntVec<int, LinearScan, uint64_t>;
-                using T5 = BDDST_Final3<int, LinearScan, uint64_t>;
-                switch (rotation % 5) {
+                using T1 = BDDST_1Bit<int, LinearScan, uint64_t>;
+                using T2 = ST_IntVec<int, LinearScan, uint64_t>;
+                switch (rotation % 2) {
                     case 0:
-                        run_benchmark<T1>(csv, B, "BDDST", n, data, timer);
-                        run_benchmark<T2>(csv, B, "ST", n, data, timer);
-                        run_benchmark<T3>(csv, B, "BDDST_Final", n, data, timer);
-                        run_benchmark<T4>(csv, B, "ST_IntVec", n, data, timer);
-                        run_benchmark<T5>(csv, B, "BDDST_Final2", n, data, timer);
+                        run_ST<T1>(csv, B, "BDDST_1Bit", n, data, timer);
+                        run_ST<T2>(csv, B, "ST_IntVec", n, data, timer);
                         break;
                     case 1:
-                        run_benchmark<T2>(csv, B, "ST", n, data, timer);
-                        run_benchmark<T3>(csv, B, "BDDST_Final", n, data, timer);
-                        run_benchmark<T4>(csv, B, "ST_IntVec", n, data, timer);
-                        run_benchmark<T5>(csv, B, "BDDST_Final2", n, data, timer);
-                        run_benchmark<T1>(csv, B, "BDDST", n, data, timer);
-                        break;
-                    case 2:
-                        run_benchmark<T3>(csv, B, "BDDST_Final", n, data, timer);
-                        run_benchmark<T4>(csv, B, "ST_IntVec", n, data, timer);
-                        run_benchmark<T5>(csv, B, "BDDST_Final2", n, data, timer);
-                        run_benchmark<T1>(csv, B, "BDDST", n, data, timer);
-                        run_benchmark<T2>(csv, B, "ST", n, data, timer);
-                        break;
-                    case 3:
-                        run_benchmark<T4>(csv, B, "ST_IntVec", n, data, timer);
-                        run_benchmark<T5>(csv, B, "BDDST_Final2", n, data, timer);
-                        run_benchmark<T1>(csv, B, "BDDST", n, data, timer);
-                        run_benchmark<T2>(csv, B, "ST", n, data, timer);
-                        run_benchmark<T3>(csv, B, "BDDST_Final", n, data, timer);
-                        break;
-                    case 4:
-                        run_benchmark<T5>(csv, B, "BDDST_Final2", n, data, timer);
-                        run_benchmark<T1>(csv, B, "BDDST", n, data, timer);
-                        run_benchmark<T2>(csv, B, "ST", n, data, timer);
-                        run_benchmark<T3>(csv, B, "BDDST_Final", n, data, timer);
-                        run_benchmark<T4>(csv, B, "ST_IntVec", n, data, timer);
+                        run_ST<T2>(csv, B, "ST_IntVec", n, data, timer);
+                        run_ST<T1>(csv, B, "BDDST_1Bit", n, data, timer);
                         break;
                 }
             };

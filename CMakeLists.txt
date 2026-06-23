@@ -134,7 +134,26 @@ target_link_libraries(rmq_bench5
 )
 
 # --- 3.8. ST vs BDDST Benchmark ---
-add_executable(st_vs_bddst STvsBDDST.cpp)
+add_executable(run_benchmark benchmark.cpp)
+
+target_include_directories(run_benchmark PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    /home/ayoub/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/FL-RMQ/include
+)
+target_link_directories(run_benchmark PRIVATE /home/ayoub/lib)
+
+target_link_libraries(run_benchmark
+    PRIVATE
+    sdsl
+    divsufsort
+    divsufsort64
+    malloc_count_lib
+    dl
+)
+
+# --- 3.9. ST vs BDDST Original Benchmark ---
+add_executable(st_vs_bddst ST_vs_BDDST.cpp)
 
 target_include_directories(st_vs_bddst PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}

@@ -16,8 +16,8 @@ template <typename T = int, typename QueryStrategy = LinearScan, typename Tidx =
 class BDDST_1Bit {
     sdsl::int_vector<0> base_row;
     
-    std::vector<sdsl::bit_vector> level_buf;
-    std::vector<sdsl::rank_support_v5<>> level_rank;
+    std::vector<sdsl::bit_vector> level_rows;
+    std::vector<sdsl::rank_support_v5<1>> level_rank;
     std::vector<sdsl::select_support_mcl<1>> level_select;
 
     const std::vector<T>& data;
@@ -40,7 +40,7 @@ public:
         }
 
         if (levels <= 1) return;
-        level_buf.resize(levels);
+        level_rows.resize(levels);
         level_rank.resize(levels);
         level_select.resize(levels);
 
@@ -52,14 +52,14 @@ public:
             const Tidx num_centers {(blocks - 1 - half) / (half * 2) + 1};
             
             // Exactly 1 bit per block, block index is the bit index
-            level_buf[level] = sdsl::bit_vector(blocks, 0);
+            level_rows[level] = sdsl::bit_vector(blocks, 0);
 
             for (Tidx range_idx {0}; range_idx < num_centers; ++range_idx) {
                 const Tidx center {range_idx * (half * 2) + half};
 
                 // Build Left
                 Tidx left_min_block {center - 1};
-                level_buf[level][center - 1] = 1; // Start of running min is always a new minimum
+                level_rows[level][center - 1] = 1; // Start of running min is always a new minimum
                 
                 for (Tidx dist {1}; dist < half && center - 1 >= dist; ++dist) {
                     const Tidx i {center - 1 - dist};
@@ -69,13 +69,13 @@ public:
                     
                     if (data[cur_min_idx] < data[left_min_idx]) {
                         left_min_block = i;
-                        level_buf[level][i] = 1;
+                        level_rows[level][i] = 1;
                     }
                 }
 
                 // Build Right
                 Tidx right_min_block {center};
-                level_buf[level][center] = 1; // Start of running min is always a new minimum
+                level_rows[level][center] = 1; // Start of running min is always a new minimum
                 
                 for (Tidx dist {1}; dist < half && center + dist < blocks; ++dist) {
                     const Tidx i {center + dist};
@@ -85,14 +85,14 @@ public:
                     
                     if (data[cur_min_idx] < data[right_min_idx]) {
                         right_min_block = i;
-                        level_buf[level][i] = 1;
+                        level_rows[level][i] = 1;
                     }
                 }
             }
 
             // Initialize O(1) Rank and Select supports
-            sdsl::util::init_support(level_rank[level], &level_buf[level]);
-            sdsl::util::init_support(level_select[level], &level_buf[level]);
+            sdsl::util::init_support(level_rank[level], &level_rows[level]);
+            sdsl::util::init_support(level_select[level], &level_rows[level]);
         }
     }
 
@@ -160,7 +160,7 @@ public:
     
     size_t table_bits() const {
         size_t total {sdsl::size_in_bytes(base_row) * 8};
-        for (const auto& vec : level_buf) total += sdsl::size_in_bytes(vec) * 8;
+        for (const auto& vec : level_rows) total += sdsl::size_in_bytes(vec) * 8;
         for (const auto& rs : level_rank) total += sdsl::size_in_bytes(rs) * 8;
         for (const auto& ss : level_select) total += sdsl::size_in_bytes(ss) * 8;
         return total;

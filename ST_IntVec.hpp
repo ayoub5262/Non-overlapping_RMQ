@@ -8,7 +8,7 @@
 #include "BlockScanStrategies.hpp"
 #include "sdsl-lite/include/sdsl/int_vector.hpp"
 
-// Sparse Table with relative offset encoding + per-level sdsl::int_vector<> bit-packing.
+// Sparse Table with relative offset encoding and per level sdsl::int_vector<> bit-packing.
 template <typename T = int, typename QueryStrategy = LinearScan, typename Tidx = std::uint64_t>
 class ST_IntVec {
     std::vector<sdsl::int_vector<0>> level_rows;
@@ -24,8 +24,8 @@ public:
         
         level_rows.resize(levels);
 
-        // ── Level 0 : per-block minima ─ RELATIVE offsets within block ─────
-        // Width = exactly log_block bits to represent [0, block_size-1].
+        // Level 0 store relative offsets of the minimum within block
+        // log_block bits to represent [0, block_size-1].
         level_rows[0] = sdsl::int_vector<0>(blocks, 0, log_block);
 
         for (Tidx i { 0 }; i < blocks; ++i) {
@@ -47,14 +47,14 @@ public:
                 // The bit width of (2^h - 1) is exactly h
                 uint8_t req_bits = static_cast<uint8_t>(h);
                 
-                // We strictly only need elements up to blocks - len
+                // We strictly only need elements up to [blocks - len]
                 Tidx num_elements = (blocks >= len) ? (blocks - len + 1) : 0;
                 level_rows[h] = sdsl::int_vector<0>(num_elements, 0, req_bits);
 
                 for (Tidx i { 0 }; i + len <= blocks; ++i) {
                     Tidx left_min, right_min;
                     
-                    // Reconstruct the absolute minimum indices directly from the previous level (0 overhead!)
+                    // Reconstruct the absolute minimum indices directly from the previous level
                     if (h == 1) {
                         left_min = (i << log_block) + static_cast<Tidx>(level_rows[0][i]);
                         right_min = ((i + step) << log_block) + static_cast<Tidx>(level_rows[0][i + step]);
@@ -68,7 +68,7 @@ public:
 
                     Tidx min_idx = data[left_min] < data[right_min] ? left_min : right_min;
                     
-                    // Store block offset relative to the START block of the interval (i)
+                    // Store block offset relative to the start block of the interval
                     Tidx min_block = min_idx >> log_block;
                     level_rows[h][i] = min_block - i;
                 }
@@ -87,23 +87,24 @@ public:
 
         if (b_l == b_r) return QueryStrategy::scan_block(data, l, r);
 
-        if (Tidx ql { b_l + 1 }, qr { b_r - 1 }; ql <= qr) {
-            Tidx k { static_cast<Tidx>(std::bit_width(static_cast<uint64_t>(qr - ql + 1)) - 1) };
+        Tidx ql { b_l + 1 }, qr { b_r - 1 }; 
+        if (ql <= qr) {
+            Tidx bw { static_cast<Tidx>(std::bit_width(static_cast<uint64_t>(qr - ql + 1)) - 1) };
             
             Tidx left_min, right_min;
 
-            if (k == 0) {
-                // Base level: relative offsets → reconstruct absolute
+            if (bw == 0) {
+                // Base level, relative offsets to reconstruct absolute
                 left_min = (ql << log_block) + static_cast<Tidx>(level_rows[0][ql]);
-                right_min = (qr << log_block) + static_cast<Tidx>(level_rows[0][qr]); // Note: qr == ql
+                right_min = (qr << log_block) + static_cast<Tidx>(level_rows[0][qr]);
             } else {
-                // Offset-encoded level
+                // Offset encoded level
                 // Read block offset and resolve via Level 0
-                Tidx left_block = ql + static_cast<Tidx>(level_rows[k][ql]);
+                Tidx left_block = ql + static_cast<Tidx>(level_rows[bw][ql]);
                 left_min = (left_block << log_block) + static_cast<Tidx>(level_rows[0][left_block]);
                 
-                Tidx right_idx = qr - (1 << k) + 1;
-                Tidx right_block = right_idx + static_cast<Tidx>(level_rows[k][right_idx]);
+                Tidx right_idx = qr - (1 << bw) + 1;
+                Tidx right_block = right_idx + static_cast<Tidx>(level_rows[bw][right_idx]);
                 right_min = (right_block << log_block) + static_cast<Tidx>(level_rows[0][right_block]);
             }
 

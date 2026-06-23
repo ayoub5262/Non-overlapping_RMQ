@@ -7,6 +7,7 @@
 #include <iostream>
 
 #include "sdsl-lite/include/sdsl/rmq_support.hpp"
+#include "IntraBlockCT.hpp"
 #include "sdsl-lite/include/sdsl/int_vector.hpp"
 #include "sdsl-lite/include/sdsl/rank_support.hpp"
 #include "sdsl-lite/include/sdsl/select_support.hpp"
@@ -19,15 +20,15 @@ private:
     sdsl::int_vector<0> base_row;
     
     sdsl::bit_vector tree_bits;
-    sdsl::rank_support_v5<> tree_rank;
+    sdsl::rank_support_v5<1> tree_rank;
     sdsl::select_support_mcl<1> tree_select;
     
-    sdsl::int_vector<> level_ones_before;
+    sdsl::int_vector<0> level_ones_before;
     
     size_t intra_ram_bits;
     
     const std::vector<T>* data;
-    sdsl::rmq_succinct_sct<true> intra_rmq;
+    IntraBlockCT<T, Tidx> intra_rmq;
     
     Tidx block_size, log_block, blocks, levels;
 
@@ -56,7 +57,7 @@ public:
 
     BDDST_CT(const std::vector<T>& arr, const Tidx B_S) : data(&arr), block_size(B_S) {
         size_t m1 = malloc_count_current();
-        intra_rmq = sdsl::rmq_succinct_sct<true>(&arr);
+        intra_rmq = IntraBlockCT<T, Tidx>(&arr, B_S);
         size_t m2 = malloc_count_current();
         intra_ram_bits = (m2 - m1) * 8;
         
@@ -76,7 +77,7 @@ public:
 
         if (levels <= 1) return;
         
-        level_ones_before = sdsl::int_vector<>(levels, 0);
+        level_ones_before = sdsl::int_vector<>(levels, 0, 64);
         
         // Build temporary level bit vectors
         std::vector<sdsl::bit_vector> tmp_levels(levels);
