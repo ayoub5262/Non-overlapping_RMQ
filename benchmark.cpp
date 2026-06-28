@@ -9,7 +9,7 @@
 #include <iomanip>
 #include <string>
 
-#include "BDDST_1Bit.hpp"
+#include "BDST_1Bit.hpp"
 #include "ST_IntVec.hpp"
 #include "FL-RMQ/include/fl_rmq.hpp"
 #include "BlockScanStrategies.hpp"
@@ -161,22 +161,22 @@ int main() {
         auto data = gen_random_perm(n);
 
         auto run_all = [&]() {
-            using T1 = BDDST_1Bit<int, LinearScan, uint64_t>;
+            using T1 = BDST_1Bit<int, LinearScan, uint64_t>;
             using T2 = ST_IntVec<int, LinearScan, uint64_t>;
             switch (rotation % 3) {
                 case 0:
-                    run_ST<T1>(csv, "BDDST_1Bit", n, data, timer);
+                    run_ST<T1>(csv, "BDST_1Bit", n, data, timer);
                     run_ST<T2>(csv, "ST_IntVec", n, data, timer);
                     run_FL(csv, "FL_RMQ", n, data, timer);
                     break;
                 case 1:
                     run_ST<T2>(csv, "ST_IntVec", n, data, timer);
                     run_FL(csv, "FL_RMQ", n, data, timer);
-                    run_ST<T1>(csv, "BDDST_1Bit", n, data, timer);
+                    run_ST<T1>(csv, "BDST_1Bit", n, data, timer);
                     break;
                 case 2:
                     run_FL(csv, "FL_RMQ", n, data, timer);
-                    run_ST<T1>(csv, "BDDST_1Bit", n, data, timer);
+                    run_ST<T1>(csv, "BDST_1Bit", n, data, timer);
                     run_ST<T2>(csv, "ST_IntVec", n, data, timer);
                     break;
             }

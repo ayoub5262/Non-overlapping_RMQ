@@ -9,7 +9,7 @@
 #include <iomanip>
 #include <string>
 
-#include "BDDST_1Bit.hpp"
+#include "BDST_1Bit.hpp"
 #include "ST_IntVec.hpp"
 #include "BlockScanStrategies.hpp"
 #include "malloc_count/malloc_count.h"
@@ -117,7 +117,7 @@ void run_ST(ofstream& csv, int B, const string& ds_name, uint64_t n, const vecto
 
 
 int main() {
-    ofstream csv("st_vs_bddst.csv");
+    ofstream csv("st_vs_bdst.csv");
     write_header(csv);
     Timer timer;
 
@@ -129,16 +129,16 @@ int main() {
 
         for (int B : block_sizes) {
             auto run_all = [&]() {
-                using T1 = BDDST_1Bit<int, LinearScan, uint64_t>;
+                using T1 = BDST_1Bit<int, LinearScan, uint64_t>;
                 using T2 = ST_IntVec<int, LinearScan, uint64_t>;
                 switch (rotation % 2) {
                     case 0:
-                        run_ST<T1>(csv, B, "BDDST_1Bit", n, data, timer);
+                        run_ST<T1>(csv, B, "BDST_1Bit", n, data, timer);
                         run_ST<T2>(csv, B, "ST_IntVec", n, data, timer);
                         break;
                     case 1:
                         run_ST<T2>(csv, B, "ST_IntVec", n, data, timer);
-                        run_ST<T1>(csv, B, "BDDST_1Bit", n, data, timer);
+                        run_ST<T1>(csv, B, "BDST_1Bit", n, data, timer);
                         break;
                 }
             };

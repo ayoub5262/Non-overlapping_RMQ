@@ -9,13 +9,13 @@
 #include "BlockScanStrategies.hpp"
 
 template <typename T = int , typename QueryStrategy = LinearScan, typename Tidx = std::uint64_t>
-class BDDST {
+class BDST {
     std::unique_ptr<Tidx[]> table; 
     const std::vector<T>& data;
     Tidx BLOCK_SIZE, blocks, levels;
 
 public:
-    BDDST(const std::vector<T>& arr, const Tidx B_S) : data(arr), BLOCK_SIZE(B_S) {
+    BDST(const std::vector<T>& arr, const Tidx B_S) : data(arr), BLOCK_SIZE(B_S) {
         Tidx n { static_cast<Tidx>(data.size()) };
         blocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
         levels = blocks <= 1 ? 1 : std::bit_width(static_cast<unsigned>(blocks - 1));

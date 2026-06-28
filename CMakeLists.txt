@@ -35,8 +35,8 @@ target_link_libraries(run_benchmark
     dl
 )
 
-# ST vs BDDST Executable (ST_vs_BDDST.cpp) 
-add_executable(st_vs_bddst ST_vs_BDDST.cpp)
+# ST vs BDDST Executable (ST_vs_BDST.cpp) 
+add_executable(st_vs_bddst ST_vs_BDST.cpp)
 
 target_include_directories(st_vs_bddst PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
