@@ -18,14 +18,7 @@
 
 using namespace std;
 
-//  Cache Flushing
-void flush_data_cache(const vector<int>& data) {
-    const char* p = reinterpret_cast<const char*>(data.data());
-    size_t size = data.size() * sizeof(int);
-    for (size_t i = 0; i < size; i += 64) {
-        _mm_clflush(p + i);
-    }
-}
+
 
 //  Data & Query Generators
 vector<int> gen_random_perm(uint64_t n) {
@@ -52,24 +45,17 @@ vector<QueryPair> gen_queries_with_range(uint64_t n, uint64_t range_len, int k) 
     return queries;
 }
 
-//  Simple Timer (wall clock + CPU clock)
+//  Simple Timer
 struct Timer {
-    using Clock = chrono::high_resolution_clock;
-    Clock::time_point wall_start;
     clock_t cpu_start;
 
     void start() {
-        wall_start = Clock::now();
         cpu_start  = clock();
     }
 
-    pair<double, double> stop() {
+    double stop() {
         clock_t cpu_end = clock();
-        auto wall_end = Clock::now();
-
-        double wall_ns = chrono::duration<double, nano>(wall_end - wall_start).count();
-        double cpu_ns  = static_cast<double>(cpu_end - cpu_start) / CLOCKS_PER_SEC * 1e9;
-        return {wall_ns, cpu_ns};
+        return static_cast<double>(cpu_end - cpu_start) / CLOCKS_PER_SEC * 1e9;
     }
 };
 
@@ -89,7 +75,7 @@ void write_row(ofstream& csv, const string& algo,
     csv.flush();
 }
 
-const vector<uint64_t> full         = {10'000'000, 100'000'000};
+const vector<uint64_t> array_sizes         = {10'000'000, 100'000'000};
 const vector<uint64_t> query_ranges = {10, 100, 1'000, 10'000, 100'000, 1'000'000, 10'000'000, 100'000'000};
 const int NUM_QUERIES = 10'000;
 const int NUM_WARMUP  = 500;   // discarded warm-up iterations before each timed loop
@@ -97,12 +83,12 @@ const int NUM_WARMUP  = 500;   // discarded warm-up iterations before each timed
 
 template<typename STType>
 void run_ST(ofstream& csv, const string& ds_name, uint64_t n, const vector<int>& data, Timer& timer) {
-    flush_data_cache(data);
+
     malloc_count_reset_peak();
     size_t mem_before = malloc_count_current();
     timer.start();
     STType dst(data, 2048);
-    auto [build_real, build_cpu] = timer.stop();
+    double build_cpu = timer.stop();
     size_t mem_after = malloc_count_current();
     size_t mem_peak  = malloc_count_peak();
     double bits      = (mem_after - mem_before) * 8.0 / n;
@@ -116,7 +102,7 @@ void run_ST(ofstream& csv, const string& ds_name, uint64_t n, const vector<int>&
         auto queries = gen_queries_with_range(n, range_len, NUM_QUERIES);
         if (queries.empty()) continue;   // range_len > n
 
-        flush_data_cache(data);
+
         // Warm-up: prime caches, result discarded
         for (int i = 0; i < NUM_WARMUP; ++i)
             sink = dst.query(queries[i % NUM_QUERIES].l, queries[i % NUM_QUERIES].r);
@@ -124,19 +110,19 @@ void run_ST(ofstream& csv, const string& ds_name, uint64_t n, const vector<int>&
         timer.start();
         for (int i = 0; i < NUM_QUERIES; ++i)
             sink = dst.query(queries[i].l, queries[i].r);
-        auto [query_real, query_cpu] = timer.stop();
+        double query_cpu = timer.stop();
 
         write_row(csv, ds_name, n, "query", range_len, query_cpu / NUM_QUERIES, bits);
     }
 }
 
 void run_FL(ofstream& csv, const string& ds_name, uint64_t n, const vector<int>& data, Timer& timer) {
-    flush_data_cache(data);
+
     malloc_count_reset_peak();
     size_t mem_before = malloc_count_current();
     timer.start();
     FLRMQ<int, int64_t, int64_t, float, 0, 1024> fl_rmq(data);
-    auto [build_real, build_cpu] = timer.stop();
+    double build_cpu = timer.stop();
     size_t mem_after = malloc_count_current();
     size_t mem_peak  = malloc_count_peak();
     double bits      = (mem_after - mem_before) * 8.0 / n;
@@ -150,7 +136,7 @@ void run_FL(ofstream& csv, const string& ds_name, uint64_t n, const vector<int>&
         auto queries = gen_queries_with_range(n, range_len, NUM_QUERIES);
         if (queries.empty()) continue;   // range_len > n
 
-        flush_data_cache(data);
+
         // Warm-up: prime caches, result discarded
         for (int i = 0; i < NUM_WARMUP; ++i)
             sink = fl_rmq.query(data, queries[i % NUM_QUERIES].l, queries[i % NUM_QUERIES].r);
@@ -158,7 +144,7 @@ void run_FL(ofstream& csv, const string& ds_name, uint64_t n, const vector<int>&
         timer.start();
         for (int i = 0; i < NUM_QUERIES; ++i)
             sink = fl_rmq.query(data, queries[i].l, queries[i].r);
-        auto [query_real, query_cpu] = timer.stop();
+        double query_cpu = timer.stop();
 
         write_row(csv, ds_name, n, "query", range_len, query_cpu / NUM_QUERIES, bits);
     }
@@ -171,7 +157,7 @@ int main() {
     Timer timer;
 
     int rotation = 0;
-    for (uint64_t n : full) {
+    for (uint64_t n : array_sizes) {
         auto data = gen_random_perm(n);
 
         auto run_all = [&]() {

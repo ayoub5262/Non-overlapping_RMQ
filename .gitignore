@@ -8,7 +8,6 @@ dstAnimation.jsx
 F_H-sct.hpp
 rmq/
 malloc_count/
-old_setup/
 .clangd
 .clang-format
 .cache
