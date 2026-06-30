@@ -36,15 +36,15 @@ target_link_libraries(run_benchmark
 )
 
 # ST vs BDDST Executable (ST_vs_BDST.cpp) 
-add_executable(st_vs_bddst ST_vs_BDST.cpp)
+add_executable(st_vs_bdst ST_vs_BDST.cpp)
 
-target_include_directories(st_vs_bddst PRIVATE
+target_include_directories(st_vs_bdst PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     /home/ayoub/include
 )
-target_link_directories(st_vs_bddst PRIVATE /home/ayoub/lib)
+target_link_directories(st_vs_bdst PRIVATE /home/ayoub/lib)
 
-target_link_libraries(st_vs_bddst
+target_link_libraries(st_vs_bdst
     PRIVATE
     sdsl
     divsufsort

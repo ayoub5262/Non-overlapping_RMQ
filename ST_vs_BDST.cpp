@@ -68,13 +68,13 @@ void write_row(ofstream& csv, const string& algo, int block_size,
 {
     csv << algo << "," << block_size << "," << size << ","
         << scenario << "," << query_range << ","
-        << fixed << setprecision(2)
+        << fixed << setprecision(3)
         << cpu_time_ns << "," << bits << "," << bits_peak << "\n";
     csv.flush();
 }
 
 const vector<uint64_t> array_sizes         = {10'000, 100'000, 1'000'000, 10'000'000, 100'000'000, 1'000'000'000};
-const vector<uint64_t> query_ranges = {10, 100, 1'000, 10'000, 100'000, 1'000'000, 10'000'000};
+const vector<uint64_t> query_ranges = {10, 100, 1'000, 10'000, 100'000, 1'000'000, 10'000'000, 100'000'000};
 const int NUM_QUERIES = 10'000;
 const int NUM_WARMUP  = 500;   // discarded warm-up iterations before each timed loop
 

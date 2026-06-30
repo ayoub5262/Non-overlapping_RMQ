@@ -4,7 +4,7 @@ set -e
 mkdir -p build
 cd build
 cmake ..
-make st_vs_bddst -j$(nproc)
+make st_vs_bdst -j$(nproc)
 
-echo "Running st_vs_bddst..."
-./st_vs_bddst
+echo "Running st_vs_bdst..."
+./st_vs_bdst
