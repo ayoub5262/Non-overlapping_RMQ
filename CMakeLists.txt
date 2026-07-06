@@ -17,7 +17,8 @@ target_include_directories(malloc_count_lib PUBLIC
 )
 
 #  Benchmark Executable (benchmark.cpp) 
-add_executable(run_benchmark benchmark.cpp)
+add_executable(run_benchmark benchmark.cpp BbST/bbst.cpp)
+target_compile_definitions(run_benchmark PRIVATE MINI_BLOCKS)
 
 target_include_directories(run_benchmark PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -27,6 +28,25 @@ target_include_directories(run_benchmark PRIVATE
 target_link_directories(run_benchmark PRIVATE /home/ayoub/lib)
 
 target_link_libraries(run_benchmark
+    PRIVATE
+    sdsl
+    divsufsort
+    divsufsort64
+    malloc_count_lib
+    dl
+)
+
+#  Benchmark Executable (benchmark2.cpp) 
+add_executable(run_benchmark2 benchmark2.cpp BbST/bbst.cpp)
+target_compile_definitions(run_benchmark2 PRIVATE MINI_BLOCKS)
+
+target_include_directories(run_benchmark2 PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    /home/ayoub/include
+)
+target_link_directories(run_benchmark2 PRIVATE /home/ayoub/lib)
+
+target_link_libraries(run_benchmark2
     PRIVATE
     sdsl
     divsufsort
