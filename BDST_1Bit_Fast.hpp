@@ -25,17 +25,7 @@ class BDST_1Bit_Fast {
     Tidx block_size, log_block, blocks, levels;
     Tidx log_mini_block, mini_block_size, mini_blocks;
 
-    inline Tidx scan_block_skip(Tidx l, Tidx r, T target_min) const {
-        Tidx min_idx { l };
-        if (data[min_idx] == target_min) return min_idx;
-        for (Tidx i { l + 1 }; i <= r; ++i) {
-            if (data[i] < data[min_idx]) {
-                min_idx = i;
-                if (data[min_idx] == target_min) return min_idx;
-            }
-        }
-        return min_idx;
-    }
+
 
 
 public:
@@ -219,38 +209,38 @@ private:
         if (ql > qr) return current_res;
         
         if (log_mini_block == log_block) {
-            Tidx scan_res = QueryStrategy::scan_block(data, ql, qr);
+            Tidx scan_res {LinearSkipScan::scan_block(data, ql, qr, data[current_res])};
             return (data[scan_res] < data[current_res]) ? scan_res : current_res;
         }
         
-        Tidx mb_l = ql >> log_mini_block;
-        Tidx mb_r = qr >> log_mini_block;
+        Tidx mb_l {ql >> log_mini_block};
+        Tidx mb_r {qr >> log_mini_block};
         
         if (mb_l == mb_r) {
-            Tidx min_idx = (mb_l << log_mini_block) + mini_base_row[mb_l];
+            Tidx min_idx {(mb_l << log_mini_block) + mini_base_row[mb_l]};
             if (min_idx >= ql && min_idx <= qr) {
                 return (data[min_idx] < data[current_res]) ? min_idx : current_res;
             }
-            Tidx scan_res = scan_block_skip(ql, qr, data[current_res]);
+            Tidx scan_res {LinearSkipScan::scan_block(data, ql, qr, data[current_res])};
             return (data[scan_res] < data[current_res]) ? scan_res : current_res;
         }
         
         Tidx res = current_res;
         
         // Left ragged mini-block
-        Tidx l_min_idx = (mb_l << log_mini_block) + mini_base_row[mb_l];
+        Tidx l_min_idx {(mb_l << log_mini_block) + mini_base_row[mb_l]};
         if (ql == (mb_l << log_mini_block) || l_min_idx >= ql) {
             if (mini_base_val[mb_l] < data[res]) res = l_min_idx;
         } else if (mini_base_val[mb_l] < data[res]) {
-            Tidx end_l = (mb_l + 1) << log_mini_block;
-            Tidx scan_res = QueryStrategy::scan_block(data, ql, end_l - 1);
+            Tidx end_l {(mb_l + 1) << log_mini_block};
+            Tidx scan_res {LinearSkipScan::scan_block(data, ql, end_l - 1, data[res])};
             if (data[scan_res] < data[res]) res = scan_res;
         }
         
         // Full mini-blocks: two-step to minimize random data[] accesses
         // Step 1: scan mini_base_val sequentially (cache-friendly, SIMD-vectorizable)
-        T best_val = data[res];
-        Tidx best_mb = Tidx(-1);
+        T best_val {data[res]};
+        Tidx best_mb {Tidx(-1)};
         for (Tidx i = mb_l + 1; i < mb_r; ++i) {
             if (mini_base_val[i] < best_val) {
                 best_val = mini_base_val[i];
@@ -262,13 +252,13 @@ private:
             res = (best_mb << log_mini_block) + mini_base_row[best_mb];
         
         // Right ragged mini-block
-        Tidx n = static_cast<Tidx>(data.size());
-        Tidx r_min_idx = (mb_r << log_mini_block) + mini_base_row[mb_r];
+        Tidx n {static_cast<Tidx>(data.size())};
+        Tidx r_min_idx {(mb_r << log_mini_block) + mini_base_row[mb_r]};
         if (qr == std::min(n - 1, ((mb_r + 1) << log_mini_block) - 1) || r_min_idx <= qr) {
             if (mini_base_val[mb_r] < data[res]) res = r_min_idx;
         } else if (mini_base_val[mb_r] < data[res]) {
-            Tidx start_r = mb_r << log_mini_block;
-            Tidx scan_res = QueryStrategy::scan_block(data, start_r, qr);
+            Tidx start_r {mb_r << log_mini_block};
+            Tidx scan_res {LinearSkipScan::scan_block(data, start_r, qr, data[res])};
             if (data[scan_res] < data[res]) res = scan_res;
         }
         

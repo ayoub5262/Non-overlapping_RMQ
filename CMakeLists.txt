@@ -16,18 +16,19 @@ target_include_directories(malloc_count_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/malloc_count
 )
 
-#  Benchmark Executable (benchmark.cpp) 
-add_executable(run_benchmark benchmark.cpp BbST/bbst.cpp)
-target_compile_definitions(run_benchmark PRIVATE MINI_BLOCKS)
+#  Benchmark Executable (benchmark1.cpp) 
+add_executable(run_benchmark1 benchmark1.cpp BbST/bbst.cpp)
+target_compile_definitions(run_benchmark1 PRIVATE MINI_BLOCKS)
 
-target_include_directories(run_benchmark PRIVATE
+target_include_directories(run_benchmark1 PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     /home/ayoub/include
     ${CMAKE_CURRENT_SOURCE_DIR}/FL-RMQ/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/sdsl-lite/include
 )
-target_link_directories(run_benchmark PRIVATE /home/ayoub/lib)
+target_link_directories(run_benchmark1 PRIVATE /home/ayoub/lib)
 
-target_link_libraries(run_benchmark
+target_link_libraries(run_benchmark1
     PRIVATE
     sdsl
     divsufsort
@@ -43,10 +44,32 @@ target_compile_definitions(run_benchmark2 PRIVATE MINI_BLOCKS)
 target_include_directories(run_benchmark2 PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     /home/ayoub/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/FL-RMQ/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/sdsl-lite/include
 )
 target_link_directories(run_benchmark2 PRIVATE /home/ayoub/lib)
 
 target_link_libraries(run_benchmark2
+    PRIVATE
+    sdsl
+    divsufsort
+    divsufsort64
+    malloc_count_lib
+    dl
+)
+
+#  Benchmark Executable (benchmark3.cpp) 
+add_executable(run_benchmark3 benchmark3.cpp BbST/bbst.cpp)
+target_compile_definitions(run_benchmark3 PRIVATE MINI_BLOCKS)
+
+target_include_directories(run_benchmark3 PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    /home/ayoub/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/sdsl-lite/include
+)
+target_link_directories(run_benchmark3 PRIVATE /home/ayoub/lib)
+
+target_link_libraries(run_benchmark3
     PRIVATE
     sdsl
     divsufsort
@@ -61,6 +84,7 @@ add_executable(st_vs_bdst ST_vs_BDST.cpp)
 target_include_directories(st_vs_bdst PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     /home/ayoub/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/sdsl-lite/include
 )
 target_link_directories(st_vs_bdst PRIVATE /home/ayoub/lib)
 
