@@ -8,7 +8,7 @@
 
 #include "BlockScanStrategies.hpp"
 
-template <typename T = int , typename QueryStrategy = LinearScan, typename Tidx = std::uint64_t>
+template <typename T = int , typename Tidx = std::uint64_t>
 class BDST {
     std::unique_ptr<Tidx[]> table; 
     const std::vector<T>& data;
@@ -26,7 +26,7 @@ public:
             Tidx min_idx { i * BLOCK_SIZE };
             Tidx end { std::min(n, (i + 1) * BLOCK_SIZE) };
             if (end > i * BLOCK_SIZE + 1) {
-                Tidx temp {QueryStrategy::scan_block(data, i * BLOCK_SIZE + 1, end - 1)};
+                Tidx temp {LinearScan::scan_block(data, i * BLOCK_SIZE + 1, end - 1)};
                 if (data[temp] < data[min_idx]) min_idx = temp;
             }
             // Base level of the Sparse Table
@@ -61,7 +61,7 @@ public:
         Tidx res { l };
 
         // Case 1: Query completely within the same block : linear scan
-        if (b_l == b_r) return QueryStrategy::scan_block(data, l, r);
+        if (b_l == b_r) return LinearScan::scan_block(data, l, r);
 
         // Case 2: Query spans multiple blocks
         // Intermediate full blocks via DST
@@ -78,7 +78,7 @@ public:
         if (data[res] >= data[table[b_l]]){
             Tidx end_l { (b_l + 1) * BLOCK_SIZE};
             if(l + 1 < end_l){
-                Tidx left_min {QueryStrategy::scan_block(data, l + 1, end_l - 1)};
+                Tidx left_min {LinearScan::scan_block(data, l + 1, end_l - 1)};
                 if(data[res] > data[left_min]) res = left_min;
             }
         }
@@ -87,7 +87,7 @@ public:
         if (data[res] >= data[table[b_r]]){
             Tidx start_r { b_r * BLOCK_SIZE };
             if(start_r <= r){
-                Tidx right_min {QueryStrategy::scan_block(data, start_r, r)};
+                Tidx right_min {LinearScan::scan_block(data, start_r, r)};
                 if(data[res] > data[right_min]) res = right_min;
             }
         }

@@ -9,7 +9,7 @@
 #include "sdsl-lite/include/sdsl/int_vector.hpp"
 
 // Sparse Table with relative offset encoding and per level sdsl::int_vector<> bit-packing.
-template <typename T = int, typename QueryStrategy = LinearScan, typename Tidx = std::uint64_t>
+template <typename T = int, typename Tidx = std::uint64_t>
 class ST_IntVec {
     std::vector<sdsl::int_vector<0>> level_rows;
     const std::vector<T>& data;
@@ -32,7 +32,7 @@ public:
             Tidx min_idx { i << log_block };
             Tidx end { std::min(n, (i + 1) << log_block) };
             if (end > (i << log_block) + 1) {
-                Tidx temp { QueryStrategy::scan_block(data, (i << log_block) + 1, end - 1) };
+                Tidx temp { LinearScan::scan_block(data, (i << log_block) + 1, end - 1) };
                 if (data[temp] < data[min_idx]) min_idx = temp;
             }
             level_rows[0][i] = min_idx - (i << log_block);
@@ -85,7 +85,7 @@ public:
         Tidx br_min { (b_r << log_block) + static_cast<Tidx>(level_rows[0][b_r]) };
 
 
-        if (b_l == b_r) return QueryStrategy::scan_block(data, l, r);
+        if (b_l == b_r) return LinearScan::scan_block(data, l, r);
 
         Tidx ql { b_l + 1 }, qr { b_r - 1 }; 
         if (ql <= qr) {
@@ -118,7 +118,7 @@ public:
         if (data[res] >= data[bl_min]){
             Tidx end_l { (b_l + 1) << log_block };
             if(l + 1 < end_l){
-                Tidx left_min {QueryStrategy::scan_block(data, l + 1, end_l - 1)};
+                Tidx left_min {LinearScan::scan_block(data, l + 1, end_l - 1)};
                 if(data[res] > data[left_min]) res = left_min;
             }
         }
@@ -127,7 +127,7 @@ public:
         if (data[res] >= data[br_min]){
             Tidx start_r { b_r << log_block };
             if(start_r <= r){
-                Tidx right_min {QueryStrategy::scan_block(data, start_r, r)};
+                Tidx right_min {LinearScan::scan_block(data, start_r, r)};
                 if(data[res] > data[right_min]) res = right_min;
             }
         }

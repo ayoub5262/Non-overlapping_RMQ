@@ -9,7 +9,7 @@
 #include "BlockScanStrategies.hpp"
 #include "sdsl-lite/include/sdsl/int_vector.hpp"
 
-template <typename T = int, typename QueryStrategy = LinearScan, typename Tidx = std::uint64_t>
+template <typename T = int, typename Tidx = std::uint64_t>
 class Blocked_SegmentTree {
     sdsl::int_vector<0> base_row;
     std::vector<T> block_base_val;  // data[base_row[i]] cached per block
@@ -32,7 +32,7 @@ public:
             Tidx min_idx {i << log_block};
             Tidx end {std::min(n, (i + 1) << log_block)};
             
-            min_idx = QueryStrategy::scan_block(data, min_idx, end - 1);
+            min_idx = LinearScan::scan_block(data, min_idx, end - 1);
             base_row[i] = min_idx - (i << log_block);
         }
 
@@ -63,7 +63,7 @@ public:
         const Tidx b_r {r >> log_block};
         Tidx res {l};
 
-        if (b_l == b_r) return QueryStrategy::scan_block(data, l, r);
+        if (b_l == b_r) return LinearScan::scan_block(data, l, r);
 
         const Tidx inner_b_l {b_l + 1};
         const Tidx inner_b_r {b_r - 1};
@@ -96,7 +96,7 @@ public:
         if (data[res] >= data[bl_min]) {
             const Tidx end_l {(b_l + 1) << log_block};
             if (l + 1 < end_l) {
-                const Tidx left_min {QueryStrategy::scan_block(data, l + 1, end_l - 1)};
+                const Tidx left_min {LinearScan::scan_block(data, l + 1, end_l - 1)};
                 if (data[res] > data[left_min]) res = left_min;
             }
         }
@@ -106,7 +106,7 @@ public:
         if (data[res] >= data[br_min]) {
             const Tidx start_r {b_r << log_block};
             if (start_r <= r) {
-                const Tidx right_min {QueryStrategy::scan_block(data, start_r, r)};
+                const Tidx right_min {LinearScan::scan_block(data, start_r, r)};
                 if (data[res] > data[right_min]) res = right_min;
             }
         }

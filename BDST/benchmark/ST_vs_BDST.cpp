@@ -9,9 +9,8 @@
 #include <iomanip>
 #include <string>
 
-#include "BDST_1Bit.hpp"
-#include "ST_IntVec.hpp"
-#include "BlockScanStrategies.hpp"
+#include "BDST/include/BDST_1Bit.hpp"
+#include "BDST/include/ST_IntVec.hpp"
 #include "malloc_count/malloc_count.h"
 #include <emmintrin.h>
 
@@ -129,8 +128,8 @@ int main() {
 
         for (int B : block_sizes) {
             auto run_all = [&]() {
-                using T1 = BDST_1Bit<int, LinearScan, uint64_t>;
-                using T2 = ST_IntVec<int, LinearScan, uint64_t>;
+                using T1 = BDST_1Bit<int,  uint64_t>;
+                using T2 = ST_IntVec<int, uint64_t>;
                 switch (rotation % 2) {
                     case 0:
                         run_ST<T1>(csv, B, "BDST_1Bit", n, data, timer);
