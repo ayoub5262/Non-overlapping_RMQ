@@ -31,7 +31,7 @@ public:
         Tidx n {static_cast<Tidx>(data.size())};
         blocks = (n + block_size - 1) / block_size;
 
-        // Determine mini-block size (cap at 256 for linear scan performance)
+        // Determine mini-block size and cap at 256 for linear scan performance
         log_mini_block = (log_block - 3 > 8) ? 8 : log_block - 3;
         mini_block_size = Tidx(1) << log_mini_block;
         mini_blocks = (n + mini_block_size - 1) / mini_block_size;

@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <vector>
 
-// Helper: dispatches run_generic for a given compile-time Epsilon.
+// Helper dispatches run_generic for a given compile-time Epsilon.
 // FL-RMQ query takes data as a first argument, so we capture it in the lambda.
 template<size_t Epsilon, size_t Samples>
 void run_fl(ofstream& csv, const string& algo_name,
@@ -22,11 +22,12 @@ void run_fl(ofstream& csv, const string& algo_name,
         });
 }
 
+
 int main() {
     ofstream csv("benchmark2.csv");
     write_header(csv);
     Timer timer;
-    std::vector<uint64_t> arr_sizes {1'000'000, 10'000'000};
+    std::vector<uint64_t> arr_sizes {100'000, 1'000'000, 10'000'000, 100'000'000};
 
     int rotation = 0;
     for_each_scenario(arr_sizes, [&](uint64_t n, const string& data_type, const vector<int>& data) {
@@ -37,8 +38,10 @@ int main() {
         // The paper uses different parameters based on whether the data is pseudo-monotone or random
         bool is_pseudo = (data_type == "INC" || data_type == "DEC");
 
-        // The paper tests Epsilon = {256, 512, 1024, 2048} for pseudo, and {1024, 2048, 4096, 8192} for others
-        std::vector<int> epsilons = is_pseudo ? std::vector<int>{256, 512, 1024, 2048} : std::vector<int>{1024, 2048, 4096, 8192};
+        // Epsilon dictates the maximum number of elements FL_RMQ has to linearly scan at the very end
+        // Since we use block decomposition for our Data Structures, we treat block size the same as
+        // Epsilon since both have to linearly scan the same number of elements as a fallback 
+        std::vector<int> epsilons {256, 512, 1024, 2048};
 
         for (int B : epsilons) {
             for (int rotate = 0; rotate < 3; ++rotate) {
@@ -63,13 +66,13 @@ int main() {
                             if (B == 256) run_fl<256, 0>(csv, "FL_RMQ", n, data_type, data, timer);
                             else if (B == 512) run_fl<512, 0>(csv, "FL_RMQ", n, data_type, data, timer);
                             else if (B == 1024) run_fl<1024, 0>(csv, "FL_RMQ", n, data_type, data, timer);
-                            else run_fl<2048, 0>(csv, "FL_RMQ", n, data_type, data, timer);
+                            else if (B == 2048) run_fl<2048, 0>(csv, "FL_RMQ", n, data_type, data, timer);
                         } else {
                             // Paper uses Samples = Epsilon / 2 for other distributions
-                            if (B == 1024) run_fl<1024, 512>(csv, "FL_RMQ", n, data_type, data, timer);
+                            if (B == 256) run_fl<256, 128>(csv, "FL_RMQ", n, data_type, data, timer);
+                            else if (B == 512) run_fl<512, 256>(csv, "FL_RMQ", n, data_type, data, timer);
+                            else if (B == 1024) run_fl<1024, 512>(csv, "FL_RMQ", n, data_type, data, timer);
                             else if (B == 2048) run_fl<2048, 1024>(csv, "FL_RMQ", n, data_type, data, timer);
-                            else if (B == 4096) run_fl<4096, 2048>(csv, "FL_RMQ", n, data_type, data, timer);
-                            else run_fl<8192, 4096>(csv, "FL_RMQ", n, data_type, data, timer);
                         }
                         break;
                 }

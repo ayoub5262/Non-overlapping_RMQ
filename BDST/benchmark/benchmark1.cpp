@@ -17,8 +17,8 @@ int main() {
         for (int rotate = 0; rotate < 3; ++rotate) {
             switch ((rotate + rotation) % 3) {
                 case 0:
-                    run_generic(csv, "BDST_1Bit(512)", 4096, n, data_type, timer,
-                        [&]() { return std::make_unique<T1>(data, 4096); },
+                    run_generic(csv, "BDST_1Bit(512)", 512, n, data_type, timer,
+                        [&]() { return std::make_unique<T1>(data, 512); },
                         [](T1& rmq, uint64_t l, uint64_t r) -> size_t {
                             return (size_t)rmq.query(l, r);
                         });

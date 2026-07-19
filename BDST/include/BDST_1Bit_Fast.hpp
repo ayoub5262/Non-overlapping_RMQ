@@ -58,7 +58,7 @@ public:
             Tidx min_idx {i << log_block};
             Tidx end {std::min(n, (i + 1) << log_block)};
             
-            // Speedup construction: if we have mini_base_row, use it!
+            // We use mini_base_row to speedup the construction
             if (log_mini_block < log_block) {
                 Tidx mb_start = i << (log_block - log_mini_block);
                 Tidx mb_end = std::min(mini_blocks, (i + 1) << (log_block - log_mini_block));
@@ -128,7 +128,7 @@ public:
                 }
             }
 
-            // Initialize O(1) Rank and Select supports
+            // Initialize Rank and Select supports
             sdsl::util::init_support(level_rank[level], &level_rows[level]);
             sdsl::util::init_support(level_select[level], &level_rows[level]);
         }
@@ -168,9 +168,9 @@ public:
             } else {
                 const Tidx level {static_cast<Tidx>(bw - 1)};
 
-                // Left lookup using Rank/Select in O(1)
+                // Left lookup using Rank/Select 
                 const Tidx actual_block_l {level_select[level](level_rank[level](inner_b_l) + 1)};
-                // Right lookup using Rank/Select in O(1)
+                // Right lookup using Rank/Select 
                 const Tidx actual_block_r {level_select[level](level_rank[level](inner_b_r + 1))};
 
                 // Use block_base_val to compare without touching large data[]

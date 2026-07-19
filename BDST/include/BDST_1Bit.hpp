@@ -90,7 +90,7 @@ public:
                 }
             }
 
-            // Initialize O(1) Rank and Select supports
+            // Initialize Rank and Select supports
             sdsl::util::init_support(level_rank[level], &level_rows[level]);
             sdsl::util::init_support(level_select[level], &level_rows[level]);
         }
@@ -120,12 +120,12 @@ public:
             } else {
                 const Tidx level {static_cast<Tidx>(bw - 1)};
 
-                // Left lookup using Rank/Select in O(1)
+                // Left lookup using Rank/Select
                 // We want the first 1 at or to the right of inner_b_l
                 const Tidx actual_block_l {level_select[level](level_rank[level](inner_b_l) + 1)};
                 const Tidx inner_b_l_abs {(actual_block_l << log_block) + base_row[actual_block_l]};
 
-                // Right lookup using Rank/Select in O(1)
+                // Right lookup using Rank/Select
                 // We want the last 1 at or to the left of inner_b_r
                 const Tidx actual_block_r {level_select[level](level_rank[level](inner_b_r + 1))};
                 const Tidx inner_b_r_abs {(actual_block_r << log_block) + base_row[actual_block_r]};
