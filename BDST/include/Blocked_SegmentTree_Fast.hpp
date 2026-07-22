@@ -144,7 +144,7 @@ public:
             }
         } else if (block_base_val[b_l] < best_val) {
             const Tidx end_l {(b_l + 1) << log_block};
-            const Tidx bound = std::min(static_cast<Tidx>(data.size()), end_l) - 1;
+            const Tidx bound {std::min(static_cast<Tidx>(data.size()), end_l) - 1};
             res = MiniBlockScanner::scan_ragged(data, mini_base_row, mini_base_val, log_block, log_mini_block, l, bound, res, best_val);
         }
 

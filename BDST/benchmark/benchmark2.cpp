@@ -29,14 +29,14 @@ int main() {
     Timer timer;
     std::vector<uint64_t> arr_sizes {100'000, 1'000'000, 10'000'000, 100'000'000};
 
-    int rotation = 0;
+    int rotation { 0 };
     for_each_scenario(arr_sizes, [&](uint64_t n, const string& data_type, const vector<int>& data) {
 
         using T1 = BDST_1Bit<int, uint64_t>;
         using T2 = Blocked_SegmentTree<int, uint64_t>;
 
         // The paper uses different parameters based on whether the data is pseudo-monotone or random
-        bool is_pseudo = (data_type == "INC" || data_type == "DEC");
+        bool is_pseudo {(data_type == "INC" || data_type == "DEC")};
 
         // Epsilon dictates the maximum number of elements FL_RMQ has to linearly scan at the very end
         // Since we use block decomposition for our Data Structures, we treat block size the same as
@@ -44,7 +44,7 @@ int main() {
         std::vector<int> epsilons {256, 512, 1024, 2048};
 
         for (int B : epsilons) {
-            for (int rotate = 0; rotate < 3; ++rotate) {
+            for (int rotate {0}; rotate < 3; ++rotate) {
                 switch ((rotate + rotation) % 3) {
                     case 0:
                         run_generic(csv, "BDST_1Bit", B, n, data_type, timer,

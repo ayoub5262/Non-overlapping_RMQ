@@ -14,20 +14,20 @@ int main() {
     write_header(csv);
     Timer timer;
 
-    int rotation = 0;
+    int rotation {0};
     for_each_scenario(array_sizes, [&](uint64_t n, const string& data_type, const vector<int>& data) {
         using T1 = BDST_1Bit_Fast<int, uint64_t>;
         using T2 = BDST2<int, uint64_t>;
         using T3 = Blocked_SegmentTree_Fast<int, uint64_t>;
 
         // BbST block/miniblock parameters for B=4096
-        const int kExp4096  = 12; // 2^12 = 4096
-        const int l2_4096   = std::max(0, kExp4096 - 4); // miniblock exponent
+        const int kExp4096 {12}; // 2^12 = 4096
+        const int l2_4096 {std::max(0, kExp4096 - 4)}; // miniblock exponent
         // BbST block parameter for B=512
-        const int kExp512   = 9;  // 2^9  = 512
-        const int l2_512    = std::max(0, kExp512 - 4);
+        const int kExp512 {9};  // 2^9  = 512
+        const int l2_512 {std::max(0, kExp512 - 4)};
 
-        for (int rotate = 0; rotate < 6; ++rotate) {
+        for (int rotate {0}; rotate < 6; ++rotate) {
             switch ((rotate + rotation) % 6) {
                 case 0:
                     run_generic(csv, "BDST_1Bit(4096-256)", 4096, n, data_type, timer,

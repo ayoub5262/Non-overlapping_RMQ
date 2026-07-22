@@ -43,16 +43,13 @@ vector<QueryPair> gen_queries_with_range(uint64_t n, uint64_t range_len, int k) 
 }
 
 //  Simple Timer
+//HighPrecision Timer 
 struct Timer {
-    clock_t cpu_start;
-
-    void start() {
-        cpu_start  = clock();
-    }
-
+    std::chrono::high_resolution_clock::time_point cpu_start;
+    void start() { cpu_start = std::chrono::high_resolution_clock::now(); }
     double stop() {
-        clock_t cpu_end = clock();
-        return static_cast<double>(cpu_end - cpu_start) / CLOCKS_PER_SEC * 1e9;
+        auto end = std::chrono::high_resolution_clock::now();
+        return std::chrono::duration<double, std::nano>(end - cpu_start).count();
     }
 };
 
@@ -72,7 +69,7 @@ void write_row(ofstream& csv, const string& algo, int block_size,
     csv.flush();
 }
 
-const vector<uint64_t> array_sizes         = {10'000, 100'000, 1'000'000, 10'000'000, 100'000'000, 1'000'000'000};
+const vector<uint64_t> array_sizes = {10'000, 100'000, 1'000'000, 10'000'000, 100'000'000, 1'000'000'000};
 const vector<uint64_t> query_ranges = {10, 100, 1'000, 10'000, 100'000, 1'000'000, 10'000'000, 100'000'000};
 const int NUM_QUERIES = 10'000;
 const int NUM_WARMUP  = 500;   // discarded warm-up iterations before each timed loop
@@ -82,32 +79,32 @@ template<typename STType>
 void run_ST(ofstream& csv, int B, const string& ds_name, uint64_t n, const vector<int>& data, Timer& timer) {
 
     malloc_count_reset_peak();
-    size_t mem_before = malloc_count_current();
+    size_t mem_before {malloc_count_current()};
     timer.start();
     STType dst(data, B);
-    double build_cpu = timer.stop();
-    size_t mem_after = malloc_count_current();
-    size_t mem_peak  = malloc_count_peak();
-    double bits      = (mem_after - mem_before) * 8.0 / n;
-    double bits_peak = (mem_peak  - mem_before) * 8.0 / n;
+    double build_cpu { timer.stop()};
+    size_t mem_after {malloc_count_current()};
+    size_t mem_peak {malloc_count_peak()};
+    double bits {(mem_after - mem_before) * 8.0 / n};
+    double bits_peak {(mem_peak  - mem_before) * 8.0 / n};
 
     // Emit one build row 
     write_row(csv, ds_name, B, n, "build", 0, build_cpu, bits, bits_peak);
 
-    volatile size_t sink = 0;
+    volatile size_t sink {0};
     for (uint64_t range_len : query_ranges) {
-        auto queries = gen_queries_with_range(n, range_len, NUM_QUERIES);
+        auto queries {gen_queries_with_range(n, range_len, NUM_QUERIES)};
         if (queries.empty()) continue;   // range_len > n
 
 
         // Warm-up: prime caches, result discarded
-        for (int i = 0; i < NUM_WARMUP; ++i)
+        for (int i {0}; i < NUM_WARMUP; ++i)
             sink = dst.query(queries[i % NUM_QUERIES].l, queries[i % NUM_QUERIES].r);
 
         timer.start();
-        for (int i = 0; i < NUM_QUERIES; ++i)
+        for (int i {0}; i < NUM_QUERIES; ++i)
             sink = dst.query(queries[i].l, queries[i].r);
-        double query_cpu = timer.stop();
+        double query_cpu {timer.stop()};
 
         write_row(csv, ds_name, B, n, "query", range_len, query_cpu / NUM_QUERIES, bits);
     }
@@ -122,14 +119,15 @@ int main() {
 
     vector<int> block_sizes = {256, 512, 1024, 2048, 4096, 8192};
 
-    int rotation = 0;
+    using T1 = BDST_1Bit<int,  uint64_t>;
+    using T2 = ST_IntVec<int, uint64_t>;
+    
+    int rotation {0};
     for (uint64_t n : array_sizes) {
-        auto data = gen_random_perm(n);
+        auto data {gen_random_perm(n)};
 
         for (int B : block_sizes) {
             auto run_all = [&]() {
-                using T1 = BDST_1Bit<int,  uint64_t>;
-                using T2 = ST_IntVec<int, uint64_t>;
                 switch (rotation % 2) {
                     case 0:
                         run_ST<T1>(csv, B, "BDST_1Bit", n, data, timer);

@@ -152,7 +152,7 @@ public:
         const Tidx inner_b_r {b_r - 1};
 
         if (inner_b_l <= inner_b_r) {
-            const int bw = std::bit_width(static_cast<unsigned>(inner_b_l ^ inner_b_r));
+            const int bw {std::bit_width(static_cast<unsigned>(inner_b_l ^ inner_b_r))};
 
             if (bw <= 1) {
                 if (block_base_val[inner_b_l] < data[res]) {

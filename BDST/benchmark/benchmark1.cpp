@@ -10,11 +10,11 @@ int main() {
     write_header(csv);
     Timer timer;
 
-    int rotation = 0;
+    int rotation { 0 };
     for_each_scenario(array_sizes, [&](uint64_t n, const string& data_type, const vector<int>& data) {
         using T1 = BDST_1Bit<int, uint64_t>;
 
-        for (int rotate = 0; rotate < 3; ++rotate) {
+        for (int rotate {0}; rotate < 3; ++rotate) {
             switch ((rotate + rotation) % 3) {
                 case 0:
                     run_generic(csv, "BDST_1Bit(512)", 512, n, data_type, timer,
