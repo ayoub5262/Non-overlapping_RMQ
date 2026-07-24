@@ -19,19 +19,38 @@ target_include_directories(malloc_count_lib PUBLIC
     ${ROOT_DIR}/malloc_count
 )
 
+# ST vs BDDST Executable (ST_vs_BDST.cpp) 
+add_executable(st_vs_bdst ST_vs_BDST.cpp)
+
+target_include_directories(st_vs_bdst PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${BDST_INCLUDE_DIR}
+    ${ROOT_DIR}
+    /home/ayoub/include
+    ${ROOT_DIR}/sdsl-lite/include
+)
+target_link_directories(st_vs_bdst PRIVATE /home/ayoub/lib)
+
+target_link_libraries(st_vs_bdst
+    PRIVATE
+    sdsl
+    divsufsort
+    divsufsort64
+    malloc_count_lib
+    dl
+)
+
+
 #  Benchmark Executable (benchmark1.cpp) 
 add_executable(run_benchmark1 benchmark1.cpp 
     ${ROOT_DIR}/rmq/RMQRMM64.cpp
     ${ROOT_DIR}/rmq/includes/Basic_rmq.cpp
 )
-
-
 target_include_directories(run_benchmark1 PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${BDST_INCLUDE_DIR}
     ${ROOT_DIR}
     /home/ayoub/include
-    ${ROOT_DIR}/FL-RMQ/include
     ${ROOT_DIR}/sdsl-lite/include
 )
 target_link_directories(run_benchmark1 PRIVATE /home/ayoub/lib)
@@ -47,7 +66,6 @@ target_link_libraries(run_benchmark1
 
 #  Benchmark Executable (benchmark2.cpp) 
 add_executable(run_benchmark2 benchmark2.cpp)
-
 
 target_include_directories(run_benchmark2 PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -78,6 +96,7 @@ target_include_directories(run_benchmark3 PRIVATE
     ${ROOT_DIR}
     /home/ayoub/include
     ${ROOT_DIR}/sdsl-lite/include
+    
 )
 target_link_directories(run_benchmark3 PRIVATE /home/ayoub/lib)
 
@@ -90,19 +109,18 @@ target_link_libraries(run_benchmark3
     dl
 )
 
-# ST vs BDDST Executable (ST_vs_BDST.cpp) 
-add_executable(st_vs_bdst ST_vs_BDST.cpp)
 
-target_include_directories(st_vs_bdst PRIVATE
+# Test Executable (test.cpp)
+add_executable(run_test test.cpp)
+target_include_directories(run_test PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${BDST_INCLUDE_DIR}
     ${ROOT_DIR}
     /home/ayoub/include
     ${ROOT_DIR}/sdsl-lite/include
 )
-target_link_directories(st_vs_bdst PRIVATE /home/ayoub/lib)
-
-target_link_libraries(st_vs_bdst
+target_link_directories(run_test PRIVATE /home/ayoub/lib)
+target_link_libraries(run_test
     PRIVATE
     sdsl
     divsufsort

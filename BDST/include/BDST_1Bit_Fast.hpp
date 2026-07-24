@@ -186,42 +186,31 @@ public:
         T best_val = data[res];
 
         // Left Boundary Scan
-        const Tidx bl_min {(b_l << log_block) + base_row[b_l]};
-        if (l == (b_l << log_block) || bl_min >= l) {
-            if (block_base_val[b_l] < best_val) {
-                res = bl_min;
+        const Tidx start_l {(b_l << log_block)};
+        const Tidx bl_min_idx {(b_l << log_block) + base_row[b_l]};
+        if (l == start_l || bl_min_idx >= l) {
+            if (block_base_val[b_l] <= best_val) {
+                res = bl_min_idx;
                 best_val = block_base_val[b_l];
             }
-        } else if (block_base_val[b_l] < best_val) {
+        } else if (block_base_val[b_l] <= best_val) {
             const Tidx end_l {(b_l + 1) << log_block};
-            const Tidx bound = std::min(static_cast<Tidx>(data.size()), end_l) - 1;
+            const Tidx bound {std::min(static_cast<Tidx>(data.size()), end_l) - 1};
             res = MiniBlockScanner::scan_ragged(data, mini_base_row, mini_base_val, log_block, log_mini_block, l, bound, res, best_val);
         }
 
         // Right Boundary Scan
         const Tidx start_r {b_r << log_block};
-        const Tidx br_min {(b_r << log_block) + base_row[b_r]};
-        if (r == std::min(static_cast<Tidx>(data.size()) - 1, ((b_r + 1) << log_block) - 1) || br_min <= r) {
+        const Tidx end_r {std::min(static_cast<Tidx>(data.size()) - 1, ((b_r + 1) << log_block) - 1)};
+        const Tidx br_min_idx {(b_r << log_block) + base_row[b_r]};
+        if (r == end_r || br_min_idx <= r) {
             if (block_base_val[b_r] < best_val) {
-                res = br_min;
+                res = br_min_idx;
             }
         } else if (block_base_val[b_r] < best_val) {
             res = MiniBlockScanner::scan_ragged(data, mini_base_row, mini_base_val, log_block, log_mini_block, start_r, r, res, best_val);
         }
 
         return res;
-    }
-public:
-    size_t table_bits() const {
-        size_t total {sdsl::size_in_bytes(base_row) * 8};
-        total += block_base_val.size() * sizeof(T) * 8;
-        if (log_mini_block < log_block) {
-            total += sdsl::size_in_bytes(mini_base_row) * 8;
-            total += mini_base_val.size() * sizeof(T) * 8;
-        }
-        for (const auto& vec : level_rows) total += sdsl::size_in_bytes(vec) * 8;
-        for (const auto& rs : level_rank) total += sdsl::size_in_bytes(rs) * 8;
-        for (const auto& ss : level_select) total += sdsl::size_in_bytes(ss) * 8;
-        return total;
     }
 };

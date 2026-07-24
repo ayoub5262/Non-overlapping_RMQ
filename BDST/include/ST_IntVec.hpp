@@ -135,10 +135,4 @@ public:
         return res;
     }
 
-    size_t table_bits() const {
-        size_t total = 0;
-        for (const auto& row : level_rows)
-            total += row.bit_size();
-        return total;
-    }
 };

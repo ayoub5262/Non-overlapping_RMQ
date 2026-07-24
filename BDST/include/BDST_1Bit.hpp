@@ -136,33 +136,19 @@ public:
         }
 
         // Left Boundary Scan
-        const Tidx bl_min {(b_l << log_block) + base_row[b_l]};
-        if (data[res] >= data[bl_min]) {
-            const Tidx end_l {(b_l + 1) << log_block};
-            if (l + 1 < end_l) {
-                const Tidx left_min {LinearScan::scan_block(data, l + 1, end_l - 1)};
-                if (data[res] > data[left_min]) res = left_min;
-            }
+        const Tidx end_l {(b_l + 1) << log_block};
+        if (l + 1 < end_l) {
+            const Tidx left_min {LinearScan::scan_block(data, l + 1, end_l - 1)};
+            if (data[res] > data[left_min]) res = left_min;
         }
 
         // Right Boundary Scan
-        const Tidx br_min {(b_r << log_block) + base_row[b_r]};
-        if (data[res] >= data[br_min]) {
-            const Tidx start_r {b_r << log_block};
-            if (start_r <= r) {
-                const Tidx right_min {LinearScan::scan_block(data, start_r, r)};
-                if (data[res] > data[right_min]) res = right_min;
-            }
+        const Tidx start_r {b_r << log_block};
+        if (start_r <= r) {
+            const Tidx right_min {LinearScan::scan_block(data, start_r, r)};
+            if (data[res] > data[right_min]) res = right_min;  
         }
 
         return res;
-    }
-    
-    size_t table_bits() const {
-        size_t total {sdsl::size_in_bytes(base_row) * 8};
-        for (const auto& vec : level_rows) total += sdsl::size_in_bytes(vec) * 8;
-        for (const auto& rs : level_rank) total += sdsl::size_in_bytes(rs) * 8;
-        for (const auto& ss : level_select) total += sdsl::size_in_bytes(ss) * 8;
-        return total;
     }
 };

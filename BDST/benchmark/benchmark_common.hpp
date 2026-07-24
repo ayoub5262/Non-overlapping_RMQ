@@ -17,6 +17,8 @@
 
 using namespace std;
 
+/* A helper file for custom benchmarking */
+
 // Dead Code Elimination barrier (mirrors FL-RMQ benchmark.hpp)
 template<class T>
 void do_not_optimize(T const &value) {
@@ -122,16 +124,18 @@ const vector<uint64_t> query_ranges {10, 100, 1'000, 10'000, 100'000, 1'000'000,
 const int NUM_QUERIES { 10'000 };
 const int NUM_WARMUP  { 500 };
 
-// Generic Benchmark Runner 
-//
-// BuildFn : () -> std::unique_ptr<RMQType>
-//   unique_ptr avoids copy/move constraints on non-movable types
-//   Example:
-//     [&]() { return std::make_unique<MyRMQ>(data, B); }
-//
-// QueryFn : (RMQType&, uint64_t l, uint64_t r) -> size_t
-//   Example:
-//     [](MyRMQ& rmq, uint64_t l, uint64_t r) -> size_t { return rmq.query(l,r); }
+
+/* Generic Benchmark Runner 
+
+ BuildFn : () -> std::unique_ptr<RMQType>
+   unique_ptr avoids copy/move constraints on non-movable types (RMQ64)
+   Example:
+     [&]() { return std::make_unique<MyRMQ>(data, B); }
+
+ QueryFn : (RMQType&, uint64_t l, uint64_t r) -> size_t
+   Example:
+     [](MyRMQ& rmq, uint64_t l, uint64_t r) -> size_t { return rmq.query(l,r); } 
+*/
 
 template<typename BuildFn, typename QueryFn>
 void run_generic(ofstream& csv, const string& algo_name, int block_size,
@@ -142,8 +146,9 @@ void run_generic(ofstream& csv, const string& algo_name, int block_size,
 {
     cout << "    -> Building " << algo_name;
     if (block_size > 0) cout << " with B=" << block_size;
-    cout << "... " << flush;
+    cout << " ... " << flush;
 
+    // Measure space usage and construction time
     malloc_count_reset_peak();
     size_t mem_before {malloc_count_current()};
     timer.start();
@@ -163,11 +168,12 @@ void run_generic(ofstream& csv, const string& algo_name, int block_size,
         auto queries {gen_queries_with_range(n, range_len, NUM_QUERIES)};
         if (queries.empty()) continue;
 
-        // Warm-up: prime caches (result accumulated but not timed)
+        // Warm-up  prime caches 
         for (int i { 0 }; i < NUM_WARMUP; ++i)
             sink ^= query_fn(*rmq_ptr, queries[i % NUM_QUERIES].l, queries[i % NUM_QUERIES].r);
         do_not_optimize(sink);
 
+        // Measure query time
         timer.start();
         for (int i {0}; i < NUM_QUERIES; ++i)
             sink ^= query_fn(*rmq_ptr, queries[i].l, queries[i].r);
@@ -179,9 +185,11 @@ void run_generic(ofstream& csv, const string& algo_name, int block_size,
     }
 }
 
-// Outer Loop Helper 
-// Drives the (n, data_type) loop and calls cb(n, data_type, data) for each
-// combination, generating the appropriate input data automatically.
+/*
+Outer Loop Helper 
+Drives the (n, data_type) loop and calls cb(n, data_type, data) for each
+combination, generating the appropriate input data automatically.
+*/
 template<typename Callback>
 void for_each_scenario(const vector<uint64_t>& sizes, Callback&& cb) {
     for (uint64_t n : sizes) {
@@ -191,16 +199,14 @@ void for_each_scenario(const vector<uint64_t>& sizes, Callback&& cb) {
                 cout << "Skipping LCP for n=" << n << endl;
                 continue;
             }
-            cout << "Generating " << data_type << " data for n=" << n
-                 << "..." << flush;
+            cout << "Generating " << data_type << " data for n=" << n << "..." << flush;
             vector<int> data;
             if      (data_type == "RAND") data = gen_random_perm(n);
             else if (data_type == "LCP")  data = gen_lcp_array(n);
             else if (data_type == "INC")  data = gen_increasing_trend(n);
             else                          data = gen_decreasing_trend(n);
             cout << " Done" << endl;
-            cout << "Running Scenario: " << data_type
-                 << " (n=" << n << ")" << endl;
+            cout << "Running Scenario: " << data_type << " (n=" << n << ")" << endl;
             cb(n, data_type, data);
         }
     }

@@ -94,8 +94,4 @@ public:
 
         return res;
     }
-
-    size_t table_bits() const {
-        return static_cast<size_t>(levels) * blocks * sizeof(Tidx) * 8;
-    }
 };

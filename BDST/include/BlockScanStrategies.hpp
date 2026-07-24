@@ -4,8 +4,9 @@
 
 struct LinearScan {
     template <typename T, typename Tidx>
-    static inline Tidx scan_block(const std::vector<T>& data, Tidx l, Tidx r) {
+    [[gnu::always_inline]] static inline Tidx scan_block(const std::vector<T>& data, Tidx l, Tidx r) {
         Tidx min_idx { l };
+        #pragma clang loop vectorize(enable)
         for (Tidx i { l + 1 }; i <= r; ++i) {
             if (data[i] < data[min_idx]) min_idx = i;
         }
@@ -15,14 +16,16 @@ struct LinearScan {
 
 struct LinearSkipScan {
     template <typename T, typename Tidx>
-    static inline Tidx scan_block(const std::vector<T>& data, Tidx l, Tidx r, T target_min = std::numeric_limits<T>::lowest()) {
+    static inline Tidx scan_block(const T* data, Tidx l, Tidx r, T target_min = std::numeric_limits<T>::lowest()) {
+        T min_val = data[l];
         Tidx min_idx { l };
-        if (data[min_idx] == target_min) return min_idx;
+        if (min_val == target_min) return min_idx;
         for (Tidx i { l + 1 }; i <= r; ++i) {
-            if (data[i] < data[min_idx]) {
+            T curr = data[i];
+            if (curr < min_val) {
+                min_val = curr;
                 min_idx = i;
-                if (data[min_idx] == target_min) return min_idx;
-                
+                if (min_val == target_min) return min_idx;
             }
         }
         return min_idx;
@@ -62,8 +65,9 @@ struct MiniBlockScanner {
         if (ql > qr) return current_res;
         
         if (log_mini_block == log_block) {
-            Tidx scan_res {LinearSkipScan::scan_block(data, ql, qr, best_val)};
-            if (data[scan_res] < best_val) {
+            // Note: If no mini-blocks, we don't have a local minimum available here, so we just scan.
+            Tidx scan_res {LinearScan::scan_block(data, ql, qr)};
+            if (data[scan_res] <= best_val) {
                 best_val = data[scan_res];
                 return scan_res;
             }
@@ -76,14 +80,14 @@ struct MiniBlockScanner {
         if (mb_l == mb_r) {
             Tidx min_idx {(mb_l << log_mini_block) + mini_base_row[mb_l]};
             if (min_idx >= ql && min_idx <= qr) {
-                if (data[min_idx] < best_val) {
+                if (data[min_idx] <= best_val) {
                     best_val = data[min_idx];
                     return min_idx;
                 }
                 return current_res;
             }
-            Tidx scan_res {LinearSkipScan::scan_block(data, ql, qr, best_val)};
-            if (data[scan_res] < best_val) {
+            Tidx scan_res {LinearScan::scan_block(data, ql, qr)};
+            if (data[scan_res] <= best_val) {
                 best_val = data[scan_res];
                 return scan_res;
             }
@@ -95,14 +99,14 @@ struct MiniBlockScanner {
         // Left ragged mini-block
         Tidx l_min_idx {(mb_l << log_mini_block) + mini_base_row[mb_l]};
         if (ql == (mb_l << log_mini_block) || l_min_idx >= ql) {
-            if (mini_base_val[mb_l] < best_val) {
+            if (mini_base_val[mb_l] <= best_val) {
                 res = l_min_idx;
                 best_val = mini_base_val[mb_l];
             }
-        } else if (mini_base_val[mb_l] < best_val) {
+        } else if (mini_base_val[mb_l] <= best_val) {
             Tidx end_l {(mb_l + 1) << log_mini_block};
-            Tidx scan_res {LinearSkipScan::scan_block(data, ql, end_l - 1, best_val)};
-            if (data[scan_res] < best_val) {
+            Tidx scan_res {LinearScan::scan_block(data, ql, end_l - 1)};
+            if (data[scan_res] <= best_val) {
                 res = scan_res;
                 best_val = data[scan_res];
             }
@@ -131,7 +135,7 @@ struct MiniBlockScanner {
             }
         } else if (mini_base_val[mb_r] < best_val) {
             Tidx start_r {mb_r << log_mini_block};
-            Tidx scan_res {LinearSkipScan::scan_block(data, start_r, qr, best_val)};
+            Tidx scan_res {LinearScan::scan_block(data, start_r, qr)};
             if (data[scan_res] < best_val) {
                 res = scan_res;
                 best_val = data[scan_res];

@@ -37,7 +37,7 @@ int main() {
                     break;
 
                 case 2:
-                    run_generic(csv, "RMQ64", 0, n, data_type, timer,
+                    run_generic(csv, "BP_RMQ64", 0, n, data_type, timer,
                         [&]() {
                             return std::make_unique<RMQRMM64>(
                                 const_cast<int*>(data.data()), data.size());
