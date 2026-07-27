@@ -1,3 +1,11 @@
+/**
+ * @file benchmark_common.hpp
+ * @brief Common Primitives and Scenario Drivers for RMQ Benchmarking.
+ *
+ * Implements high-precision CPU timing routines, memory peak profiling integration
+ * (`malloc_count`), synthetic data generators (RAND, LCP, INC, DEC), and CSV formatting.
+ */
+
 #pragma once
 
 #include <chrono>
@@ -81,7 +89,7 @@ inline vector<QueryPair> gen_queries_with_range(uint64_t n, uint64_t range_len, 
     queries.reserve(k);
     mt19937 rng(789);
     uniform_int_distribution<uint64_t> dist(0, n - range_len);
-    for (int i = 0; i < k; ++i) {
+    for (int i {0}; i < k; ++i) {
         uint64_t l { dist(rng) };
         queries.push_back({l, l + range_len - 1});
     }
@@ -93,7 +101,7 @@ struct Timer {
     std::chrono::high_resolution_clock::time_point cpu_start;
     void start() { cpu_start = std::chrono::high_resolution_clock::now(); }
     double stop() {
-        auto end = std::chrono::high_resolution_clock::now();
+        auto end {std::chrono::high_resolution_clock::now()};
         return std::chrono::duration<double, std::nano>(end - cpu_start).count();
     }
 };
@@ -178,7 +186,7 @@ void run_generic(ofstream& csv, const string& algo_name, int block_size,
         for (int i {0}; i < NUM_QUERIES; ++i)
             sink ^= query_fn(*rmq_ptr, queries[i].l, queries[i].r);
         do_not_optimize(sink);
-        double query_cpu = timer.stop();
+        double query_cpu {timer.stop()};
 
         write_row(csv, algo_name, block_size, n, data_type, "query",
                   range_len, query_cpu / NUM_QUERIES, bits);

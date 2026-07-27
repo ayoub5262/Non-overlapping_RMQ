@@ -1,3 +1,11 @@
+/**
+ * @file ST_IntVec.hpp
+ * @brief Succinct Integer Vector Sparse Table.
+ *
+ * A memory-compressed Sparse Table variant leveraging SDSL bit-packed integer vectors
+ * to store block offsets rather than absolute raw pointers.
+ */
+
 #pragma once
 
 #include <vector>
@@ -48,7 +56,7 @@ public:
                 uint8_t req_bits = static_cast<uint8_t>(h);
                 
                 // We strictly only need elements up to [blocks - len]
-                Tidx num_elements = (blocks >= len) ? (blocks - len + 1) : 0;
+                Tidx num_elements {(blocks >= len) ? (blocks - len + 1) : 0};
                 level_rows[h] = sdsl::int_vector<0>(num_elements, 0, req_bits);
 
                 for (Tidx i { 0 }; i + len <= blocks; ++i) {
@@ -59,17 +67,17 @@ public:
                         left_min = (i << log_block) + static_cast<Tidx>(level_rows[0][i]);
                         right_min = ((i + step) << log_block) + static_cast<Tidx>(level_rows[0][i + step]);
                     } else {
-                        Tidx l_block = i + static_cast<Tidx>(level_rows[h - 1][i]);
+                        Tidx l_block {i + static_cast<Tidx>(level_rows[h - 1][i])};
                         left_min = (l_block << log_block) + static_cast<Tidx>(level_rows[0][l_block]);
                         
-                        Tidx r_block = (i + step) + static_cast<Tidx>(level_rows[h - 1][i + step]);
+                        Tidx r_block {(i + step) + static_cast<Tidx>(level_rows[h - 1][i + step])};
                         right_min = (r_block << log_block) + static_cast<Tidx>(level_rows[0][r_block]);
                     }
 
-                    Tidx min_idx = data[left_min] < data[right_min] ? left_min : right_min;
+                    Tidx min_idx {data[left_min] < data[right_min] ? left_min : right_min};
                     
                     // Store block offset relative to the start block of the interval
-                    Tidx min_block = min_idx >> log_block;
+                    Tidx min_block {min_idx >> log_block};
                     level_rows[h][i] = min_block - i;
                 }
             }
@@ -100,11 +108,11 @@ public:
             } else {
                 // Offset encoded level
                 // Read block offset and resolve via Level 0
-                Tidx left_block = ql + static_cast<Tidx>(level_rows[bw][ql]);
+                Tidx left_block {ql + static_cast<Tidx>(level_rows[bw][ql])};
                 left_min = (left_block << log_block) + static_cast<Tidx>(level_rows[0][left_block]);
                 
-                Tidx right_idx = qr - (1 << bw) + 1;
-                Tidx right_block = right_idx + static_cast<Tidx>(level_rows[bw][right_idx]);
+                Tidx right_idx {qr - (1 << bw) + 1};
+                Tidx right_block {right_idx + static_cast<Tidx>(level_rows[bw][right_idx])};
                 right_min = (right_block << log_block) + static_cast<Tidx>(level_rows[0][right_block]);
             }
 

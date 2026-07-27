@@ -35,8 +35,8 @@ vector<QueryPair> gen_queries_with_range(uint64_t n, uint64_t range_len, int k) 
     queries.reserve(k);
     mt19937 rng(789);
     uniform_int_distribution<uint64_t> dist(0, n - range_len);
-    for (int i = 0; i < k; ++i) {
-        uint64_t l = dist(rng);
+    for (int i {0}; i < k; ++i) {
+        uint64_t l {dist(rng)};
         queries.push_back({(uint64_t)l, (uint64_t)(l + range_len - 1)});
     }
     return queries;
@@ -48,7 +48,7 @@ struct Timer {
     std::chrono::high_resolution_clock::time_point cpu_start;
     void start() { cpu_start = std::chrono::high_resolution_clock::now(); }
     double stop() {
-        auto end = std::chrono::high_resolution_clock::now();
+        auto end {std::chrono::high_resolution_clock::now()};
         return std::chrono::duration<double, std::nano>(end - cpu_start).count();
     }
 };
@@ -69,10 +69,10 @@ void write_row(ofstream& csv, const string& algo, int block_size,
     csv.flush();
 }
 
-const vector<uint64_t> array_sizes = {10'000, 100'000, 1'000'000, 10'000'000, 100'000'000, 1'000'000'000};
-const vector<uint64_t> query_ranges = {10, 100, 1'000, 10'000, 100'000, 1'000'000, 10'000'000, 100'000'000};
-const int NUM_QUERIES = 10'000;
-const int NUM_WARMUP  = 500;   // discarded warm-up iterations before each timed loop
+const vector<uint64_t> array_sizes {10'000, 100'000, 1'000'000, 10'000'000, 100'000'000, 1'000'000'000};
+const vector<uint64_t> query_ranges {10, 100, 1'000, 10'000, 100'000, 1'000'000, 10'000'000, 100'000'000};
+const int NUM_QUERIES {10'000};
+const int NUM_WARMUP  {500};   // discarded warm-up iterations before each timed loop
 
 
 template<typename STType>
@@ -117,7 +117,7 @@ int main() {
     write_header(csv);
     Timer timer;
 
-    vector<int> block_sizes = {256, 512, 1024, 2048, 4096, 8192};
+    vector<int> block_sizes {256, 512, 1024, 2048, 4096, 8192};
 
     using T1 = BDST_1Bit<int,  uint64_t>;
     using T2 = ST_IntVec<int, uint64_t>;

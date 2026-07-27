@@ -1,3 +1,12 @@
+/**
+ * @file BDST_1Bit.hpp
+ * @brief 1-Bit Decision Vector Blocked Disjoint Sparse Table.
+ *
+ * Replaces traditional explicit multi-bit index tables with succinct 1-bit decision
+ * vectors per hierarchy level, leveraging rank and select structures to significantly
+ * compress index footprint.
+ */
+
 #pragma once
 
 #include <vector>
@@ -99,54 +108,76 @@ public:
     Tidx query(Tidx l, Tidx r) const {
         const Tidx b_l {l >> log_block};
         const Tidx b_r {r >> log_block};
-        Tidx res {l};
 
-        if (b_l == b_r) return LinearScan::scan_block(data, l, r);
+        if (b_l == b_r) {
+            const Tidx bl_min_abs {(b_l << log_block) + base_row[b_l]};
+            if (bl_min_abs >= l && bl_min_abs <= r) return bl_min_abs;
+            return LinearScan::scan_block(data, l, r);
+        }
 
         const Tidx inner_b_l {b_l + 1};
         const Tidx inner_b_r {b_r - 1};
+        Tidx res {l};
+        bool has_inner {false};
 
         if (inner_b_l <= inner_b_r) {
-            const int bw = std::bit_width(static_cast<unsigned>(inner_b_l ^ inner_b_r));
+            has_inner = true;
+            const int bw {std::bit_width(static_cast<unsigned>(inner_b_l ^ inner_b_r))};
+            Tidx inner_best;
 
             if (bw <= 1) {
-                const Tidx inner_b_l_abs {(inner_b_l << log_block) + base_row[inner_b_l]};
-                if (data[inner_b_l_abs] < data[res]) res = inner_b_l_abs;
-                
+                inner_best = inner_b_l;
                 if (inner_b_l != inner_b_r) {
-                    const Tidx inner_b_r_abs {(inner_b_r << log_block) + base_row[inner_b_r]};
-                    if (data[inner_b_r_abs] < data[res]) res = inner_b_r_abs;
+                    const Tidx idx_l {(inner_b_l << log_block) + base_row[inner_b_l]};
+                    const Tidx idx_r {(inner_b_r << log_block) + base_row[inner_b_r]};
+                    if (data[idx_r] < data[idx_l]) inner_best = inner_b_r;
                 }
             } else {
                 const Tidx level {static_cast<Tidx>(bw - 1)};
-
                 // Left lookup using Rank/Select
                 // We want the first 1 at or to the right of inner_b_l
                 const Tidx actual_block_l {level_select[level](level_rank[level](inner_b_l) + 1)};
-                const Tidx inner_b_l_abs {(actual_block_l << log_block) + base_row[actual_block_l]};
-
                 // Right lookup using Rank/Select
                 // We want the last 1 at or to the left of inner_b_r
                 const Tidx actual_block_r {level_select[level](level_rank[level](inner_b_r + 1))};
-                const Tidx inner_b_r_abs {(actual_block_r << log_block) + base_row[actual_block_r]};
+                
+                const Tidx idx_l {(actual_block_l << log_block) + base_row[actual_block_l]};
+                const Tidx idx_r {(actual_block_r << log_block) + base_row[actual_block_r]};
+                inner_best = (data[idx_l] <= data[idx_r]) ? actual_block_l : actual_block_r;
+            }
+            res = (inner_best << log_block) + base_row[inner_best];
+        }
 
-                if (data[inner_b_l_abs] < data[res]) res = inner_b_l_abs;
-                if (data[inner_b_r_abs] < data[res]) res = inner_b_r_abs;
+        // Left Fringe Block 
+        const Tidx start_l {b_l << log_block};
+        const Tidx bl_min_idx {start_l + base_row[b_l]};
+        if (!has_inner || data[bl_min_idx] < data[res]) {
+            if (bl_min_idx >= l) {
+                // Precomputed minimum lies within query bounds we avoid the scan
+                res = bl_min_idx;
+            } else {
+                const Tidx end_l {(b_l + 1) << log_block};
+                const Tidx left_min {LinearScan::scan_block(data, l, end_l - 1)};
+                if (!has_inner || data[left_min] <= data[res]) {
+                    res = left_min;
+                }
             }
         }
 
-        // Left Boundary Scan
-        const Tidx end_l {(b_l + 1) << log_block};
-        if (l + 1 < end_l) {
-            const Tidx left_min {LinearScan::scan_block(data, l + 1, end_l - 1)};
-            if (data[res] > data[left_min]) res = left_min;
-        }
-
-        // Right Boundary Scan
+        // Right Fringe Block
         const Tidx start_r {b_r << log_block};
-        if (start_r <= r) {
-            const Tidx right_min {LinearScan::scan_block(data, start_r, r)};
-            if (data[res] > data[right_min]) res = right_min;  
+        const Tidx end_r {std::min(static_cast<Tidx>(data.size()) - 1, ((b_r + 1) << log_block) - 1)};
+        const Tidx br_min_idx {start_r + base_row[b_r]};
+        if (data[br_min_idx] < data[res]) {
+            if (br_min_idx <= r || r == end_r) {
+                // Precomputed minimum lies within query bounds we avoid the scan
+                res = br_min_idx;
+            } else {
+                const Tidx right_min {LinearScan::scan_block(data, start_r, r)};
+                if (data[right_min] < data[res]) {
+                    res = right_min;
+                }
+            }
         }
 
         return res;

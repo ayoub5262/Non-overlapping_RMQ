@@ -1,3 +1,11 @@
+/**
+ * @file test.cpp
+ * @brief Automated Correctness Verification Suite.
+ *
+ * Validates range query results for all BDST and Blocked Segment Tree variations
+ * across randomized interval spans against authoritative SDSL Sparse Table.
+ */
+
 #include "benchmark_common.hpp"
 
 #include "BDST/include/BDST_1Bit.hpp"
@@ -20,14 +28,13 @@ using namespace std;
 
 void run_tests() {
     // Array sizes to test
-    vector<uint64_t> test_sizes = {10'000, 100'000};
+    vector<uint64_t> test_sizes {10'000, 100'000};
     
     // Total queries per scenario
-    const int NUM_TEST_QUERIES = 5000;
+    const int NUM_TEST_QUERIES {5000};
     
     // Block sizes
-    const int B = 4096;
-    const int B_BDST1 = 512;
+    const int B {4096};
 
     for_each_scenario(test_sizes, [&](uint64_t n, const string& data_type, const vector<int>& data) {
         cout << "\n=======================================\n";
@@ -35,11 +42,11 @@ void run_tests() {
 
         // Shift data to be strictly positive so sdsl::int_vector can handle it correctly
         // SDSL works with unsigned integers.
-        long long min_elem = *std::min_element(data.begin(), data.end());
-        long long offset = min_elem < 0 ? -min_elem + 1 : 0;
+        long long min_elem {*std::min_element(data.begin(), data.end())};
+        long long offset {min_elem < 0 ? -min_elem + 1 : 0};
 
         sdsl::int_vector<> sdsl_data(n);
-        for (uint64_t i = 0; i < n; ++i) {
+        for (uint64_t i {0}; i < n; ++i) {
             sdsl_data[i] = static_cast<uint64_t>(data[i] + offset);
         }
 
@@ -54,7 +61,7 @@ void run_tests() {
         cout << " Done" << endl;
 
         cout << "Building BDST1..." << flush;
-        BDST1<int, uint64_t> bdst1(data, B_BDST1);
+        BDST1<int, uint64_t> bdst1(data, B);
         cout << " Done" << endl;
 
         cout << "Building BDST2..." << flush;
@@ -85,30 +92,30 @@ void run_tests() {
         mt19937 rng(1337);
         uniform_int_distribution<uint64_t> dist_len(1, n);
 
-        int errors_1bit = 0;
-        int errors_bdst1 = 0;
-        int errors_bdst2 = 0;
-        int errors_b_segtree = 0;
-        int errors_bdst = 0;
-        int errors_1bit_slow = 0;
-        int errors_b_segtree_slow = 0;
-        int errors_st_intvec = 0;
+        int errors_1bit {0};
+        int errors_bdst1 {0};
+        int errors_bdst2 {0};
+        int errors_b_segtree {0};
+        int errors_bdst {0};
+        int errors_1bit_slow {0};
+        int errors_b_segtree_slow {0};
+        int errors_st_intvec {0};
 
         cout << "Running " << NUM_TEST_QUERIES << " random queries..." << flush;
-        for (int i = 0; i < NUM_TEST_QUERIES; ++i) {
-            uint64_t len = dist_len(rng);
+        for (int i {0}; i < NUM_TEST_QUERIES; ++i) {
+            uint64_t len {dist_len(rng)};
             uniform_int_distribution<uint64_t> dist_l(0, n - len);
-            uint64_t l = dist_l(rng);
-            uint64_t r = l + len - 1;
+            uint64_t l {dist_l(rng)};
+            uint64_t r {l + len - 1};
 
             // Baseline
-            uint64_t expected_idx = ground_truth(l, r);
-            int expected_val = data[expected_idx];
+            uint64_t expected_idx {ground_truth(l, r)};
+            int expected_val {data[expected_idx]};
 
             // Evaluate
             auto check = [&](auto& rmq, int& error_count, const string& name) {
-                uint64_t res_idx = rmq.query(l, r);
-                int res_val = data[res_idx];
+                uint64_t res_idx {rmq.query(l, r)};
+                int res_val {data[res_idx]};
                 
                 // Compare by VALUE rather than index, as there could be multiple minimums
                 if (res_val != expected_val) {

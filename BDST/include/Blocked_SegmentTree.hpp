@@ -1,3 +1,11 @@
+/**
+ * @file Blocked_SegmentTree.hpp
+ * @brief Blocked Segment Tree RMQ Index.
+ *
+ * Implements a hybrid RMQ data structure building an internal bottom-up tournament
+ * segment tree over block minima
+ */
+
 #pragma once
 
 #include <vector>
@@ -47,10 +55,10 @@ public:
     
         if (n_pow2 > 0) {
             seg_tree.assign(2 * n_pow2, blocks);
-            for (Tidx i = 0; i < blocks; ++i) {
+            for (Tidx i {0}; i < blocks; ++i) {
                 seg_tree[n_pow2 + i] = i;
             }
-            for (Tidx i = n_pow2 - 1; i > 0; --i) {
+            for (Tidx i {n_pow2 - 1}; i > 0; --i) {
                 Tidx l {seg_tree[2 * i]};
                 Tidx r {seg_tree[2 * i + 1]};
                 seg_tree[i] = (block_base_val[l] < block_base_val[r]) ? l : r;

@@ -1,4 +1,9 @@
 
+/**
+ * @file benchmark2.cpp
+ * @brief Compares blocked RMQ structures (BDST_1Bit and Blocked_SegmentTree) against learned FL_RMQ across varying block sizes.
+ */
+
 #include "benchmark_common.hpp"
 
 #include "BDST/include/BDST_1Bit.hpp"

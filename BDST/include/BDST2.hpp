@@ -1,3 +1,11 @@
+/**
+ * @file BDST2.hpp
+ * @brief Hierarchical Two-Level Blocked Disjoint Sparse Table.
+ *
+ * Combines macro-block and mini-block decomposition to accelerate table construction
+ * and reduce linear scan overhead during range queries
+ */
+
 #pragma once
 
 #include <vector>
@@ -32,7 +40,7 @@ public:
         blocks = (n + block_size - 1) / block_size;
         levels = blocks <= 1 ? 1 : std::bit_width(static_cast<unsigned>(blocks - 1));
 
-        // Determine mini-block size (cap at 256 for linear scan performance)
+        // Determine mini-block size, capped at 256 for linear scan performance
         log_mini_block = (log_block - 3 > 8) ? 8 : log_block - 3;
         mini_block_size = Tidx(1) << log_mini_block;
         mini_blocks = (n + mini_block_size - 1) / mini_block_size;
@@ -55,13 +63,13 @@ public:
             Tidx min_idx {i << log_block};
             Tidx end {std::min(n, (i + 1) << log_block)};
             
-            // Speedup construction: if we have mini_base_row, use it!
+            // We use mini_base_row to speedup construction
             if (log_mini_block < log_block) {
-                Tidx mb_start = i << (log_block - log_mini_block);
-                Tidx mb_end = std::min(mini_blocks, (i + 1) << (log_block - log_mini_block));
+                Tidx mb_start {i << (log_block - log_mini_block)};
+                Tidx mb_end {std::min(mini_blocks, (i + 1) << (log_block - log_mini_block))};
                 min_idx = (mb_start << log_mini_block) + mini_base_row[mb_start];
-                for (Tidx mb = mb_start + 1; mb < mb_end; ++mb) {
-                    Tidx candidate = (mb << log_mini_block) + mini_base_row[mb];
+                for (Tidx mb {mb_start + 1}; mb < mb_end; ++mb) {
+                    Tidx candidate {(mb << log_mini_block) + mini_base_row[mb]};
                     if (data[candidate] < data[min_idx]) {
                         min_idx = candidate;
                     }
@@ -138,54 +146,76 @@ public:
 
         if (inner_b_l <= inner_b_r) {
             const int bw = std::bit_width(static_cast<unsigned>(inner_b_l ^ inner_b_r));
+            Tidx inner_best;
 
             if (bw <= 1) {
-                res = inner_b_l;
+                inner_best = inner_b_l;
                 if (inner_b_l != inner_b_r && block_base_val[inner_b_r] < block_base_val[inner_b_l]) {
-                    res = inner_b_r;
+                    inner_best = inner_b_r;
                 }
             } else {
                 const Tidx level {static_cast<Tidx>(bw - 1)};
-
                 const Tidx actual_block_l {level_block_id[level][inner_b_l]};
                 const Tidx actual_block_r {level_block_id[level][inner_b_r]};
 
                 if (block_base_val[actual_block_r] < block_base_val[actual_block_l]) {
-                    res = actual_block_r;
+                    inner_best = actual_block_r;
                 } else {
-                    res = actual_block_l;
+                    inner_best = actual_block_l;
                 }
             }
-            best_val = block_base_val[res];
-            res = (res << log_block) + base_row[res];
+
+            // Global Early Return Short-Circuit:
+            // Find overall best block among left boundary, inner DST best, and right boundary
+            Tidx best_block = inner_best;
+            if (block_base_val[b_l] < block_base_val[best_block]) best_block = b_l;
+            if (block_base_val[b_r] < block_base_val[best_block]) best_block = b_r;
+
+            const Tidx best_min_idx {(best_block << log_block) + base_row[best_block]};
+            if (l <= best_min_idx && best_min_idx <= r) {
+                return best_min_idx; 
+            }
+
+            res = (inner_best << log_block) + base_row[inner_best];
+            best_val = block_base_val[inner_best];
         } else {
+            // Adjacent blocks (b_r == b_l + 1): Check if either block minimum is inside [l, r]
+            const Tidx bl_min_idx {(b_l << log_block) + base_row[b_l]};
+            const Tidx br_min_idx {(b_r << log_block) + base_row[b_r]};
+            if (bl_min_idx >= l && br_min_idx <= r) {
+                return (block_base_val[b_l] <= block_base_val[b_r]) ? bl_min_idx : br_min_idx;
+            }
+            if (bl_min_idx >= l && block_base_val[b_l] <= block_base_val[b_r]) return bl_min_idx;
+            if (br_min_idx <= r && block_base_val[b_r] < block_base_val[b_l]) return br_min_idx;
+
             best_val = data[res];
         }
 
         // Left Boundary Scan
-        const Tidx start_l {(b_l << log_block)};
-        const Tidx bl_min_idx {(b_l << log_block) + base_row[b_l]};
-        if (l == start_l || bl_min_idx >= l) {
-            if (block_base_val[b_l] <= best_val) {
+        if (block_base_val[b_l] <= best_val) {
+            const Tidx start_l {b_l << log_block};
+            const Tidx bl_min_idx {start_l + base_row[b_l]};
+            if (l == start_l || bl_min_idx >= l) {
                 res = bl_min_idx;
                 best_val = block_base_val[b_l];
+            } else {
+                const Tidx end_l {(b_l + 1) << log_block};
+                const Tidx bound {std::min(static_cast<Tidx>(data.size()), end_l) - 1};
+                res = MiniBlockScanner::scan_ragged(data, mini_base_row, mini_base_val, log_block, log_mini_block, l, bound, res, best_val);
+                best_val = data[res];
             }
-        } else if (block_base_val[b_l] <= best_val) {
-            const Tidx end_l {(b_l + 1) << log_block};
-            const Tidx bound {std::min(static_cast<Tidx>(data.size()), end_l) - 1};
-            res = MiniBlockScanner::scan_ragged(data, mini_base_row, mini_base_val, log_block, log_mini_block, l, bound, res, best_val);
         }
 
         // Right Boundary Scan
-        const Tidx start_r {b_r << log_block};
-        const Tidx end_r {std::min(static_cast<Tidx>(data.size()) - 1, ((b_r + 1) << log_block) - 1)};
-        const Tidx br_min_idx {(b_r << log_block) + base_row[b_r]};
-        if (r == end_r || br_min_idx <= r) {
-            if (block_base_val[b_r] < best_val) {
-                res = br_min_idx;
+        if (block_base_val[b_r] < best_val) {
+            const Tidx start_r {b_r << log_block};
+            const Tidx end_r {std::min(static_cast<Tidx>(data.size()) - 1, ((b_r + 1) << log_block) - 1)};
+            const Tidx br_min_idx {start_r + base_row[b_r]};
+            if (r == end_r || br_min_idx <= r) {
+                return br_min_idx;
+            } else {
+                return MiniBlockScanner::scan_ragged(data, mini_base_row, mini_base_val, log_block, log_mini_block, start_r, r, res, best_val);
             }
-        } else if (block_base_val[b_r] < best_val) {
-            res = MiniBlockScanner::scan_ragged(data, mini_base_row, mini_base_val, log_block, log_mini_block, start_r, r, res, best_val);
         }
 
         return res;

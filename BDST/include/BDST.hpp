@@ -1,3 +1,11 @@
+/**
+ * @file BDST.hpp
+ * @brief Blocked Disjoint Sparse Table.
+ *
+ * Implements a static Range Minimum Query (RMQ) structure combining macro-block
+ * partition decomposition with a standard internal Disjoint Sparse Table layout
+ */
+
 #pragma once
 
 #include <vector>
@@ -12,21 +20,21 @@ template <typename T = int , typename Tidx = std::uint64_t>
 class BDST {
     std::unique_ptr<Tidx[]> table; 
     const std::vector<T>& data;
-    Tidx BLOCK_SIZE, blocks, levels;
+    Tidx block_size, blocks, levels;
 
 public:
-    BDST(const std::vector<T>& arr, const Tidx B_S) : data(arr), BLOCK_SIZE(B_S) {
+    BDST(const std::vector<T>& arr, const Tidx B_S) : data(arr), block_size(B_S) {
         Tidx n { static_cast<Tidx>(data.size()) };
-        blocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
+        blocks = (n + block_size - 1) / block_size;
         levels = blocks <= 1 ? 1 : std::bit_width(static_cast<unsigned>(blocks - 1));
         table = std::make_unique_for_overwrite<Tidx[]>(levels * blocks);
 
         // Calculate minima per block
         for (Tidx i { 0 }; i < blocks; ++i) {
-            Tidx min_idx { i * BLOCK_SIZE };
-            Tidx end { std::min(n, (i + 1) * BLOCK_SIZE) };
-            if (end > i * BLOCK_SIZE + 1) {
-                Tidx temp {LinearScan::scan_block(data, i * BLOCK_SIZE + 1, end - 1)};
+            Tidx min_idx { i * block_size };
+            Tidx end { std::min(n, (i + 1) * block_size) };
+            if (end > i * block_size + 1) {
+                Tidx temp {LinearScan::scan_block(data, i * block_size + 1, end - 1)};
                 if (data[temp] < data[min_idx]) min_idx = temp;
             }
             // Base level of the Sparse Table
@@ -56,8 +64,8 @@ public:
     }
 
     Tidx query(Tidx l, Tidx r) const {
-        Tidx b_l { l / BLOCK_SIZE };
-        Tidx b_r { r / BLOCK_SIZE };
+        Tidx b_l { l / block_size };
+        Tidx b_r { r / block_size };
         Tidx res { l };
 
         // Case 1: Query completely within the same block : linear scan
@@ -76,7 +84,7 @@ public:
 
         // Left boundary 
         if (data[res] >= data[table[b_l]]){
-            Tidx end_l { (b_l + 1) * BLOCK_SIZE};
+            Tidx end_l { (b_l + 1) * block_size};
             if(l + 1 < end_l){
                 Tidx left_min {LinearScan::scan_block(data, l + 1, end_l - 1)};
                 if(data[res] > data[left_min]) res = left_min;
@@ -85,7 +93,7 @@ public:
         
         // Right boundary
         if (data[res] >= data[table[b_r]]){
-            Tidx start_r { b_r * BLOCK_SIZE };
+            Tidx start_r { b_r * block_size };
             if(start_r <= r){
                 Tidx right_min {LinearScan::scan_block(data, start_r, r)};
                 if(data[res] > data[right_min]) res = right_min;
