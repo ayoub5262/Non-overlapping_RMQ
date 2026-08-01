@@ -17,6 +17,7 @@ int main() {
     int rotation { 0 };
     for_each_scenario(array_sizes, [&](uint64_t n, const string& data_type, const vector<int>& data) {
         using T1 = BDST_1Bit<int, uint64_t>;
+        // We use the parameters recommended by the authors, block_size = 1024 with 2 recursion levels
         using T2 = sdsl::rmq_succinct_rec_new<true, 0, 1024, 1024>;
 
         for (int rotate {0}; rotate < 3; ++rotate) {
@@ -30,7 +31,7 @@ int main() {
                     break;
 
                 case 1:
-                    run_generic(csv, "SDSL_new_rec", 1024, n, data_type, timer,
+                    run_generic(csv, "SDSL_rec_new(1024)", 1024, n, data_type, timer,
                         [&]() {
                             return std::make_unique<T2>(&data);
                         },
@@ -40,7 +41,7 @@ int main() {
                     break;
 
                 case 2:
-                    run_generic(csv, "BP_RMQ64", 0, n, data_type, timer,
+                    run_generic(csv, "BP_RMQ64(512)", 0, n, data_type, timer,
                         [&]() {
                             return std::make_unique<RMQRMM64>(
                                 const_cast<int*>(data.data()), data.size());

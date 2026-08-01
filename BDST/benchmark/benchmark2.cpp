@@ -12,8 +12,8 @@
 #include <cstdint>
 #include <vector>
 
-// Helper dispatches run_generic for a given compile-time Epsilon.
-// FL-RMQ query takes data as a first argument, so we capture it in the lambda.
+// Helper dispatches run_generic for  compile-time Epsilon.
+// FL-RMQ query takes data as a first argument
 template<size_t Epsilon, size_t Samples>
 void run_fl(ofstream& csv, const string& algo_name,
             uint64_t n, const string& data_type,

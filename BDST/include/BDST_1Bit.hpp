@@ -30,7 +30,7 @@ class BDST_1Bit {
     std::vector<sdsl::select_support_mcl<1>> level_select;
 
     const std::vector<T>& data;
-    Tidx block_size, log_block, blocks, levels;
+    Tidx block_size, log_block,  blocks, levels;
 
 public:
     BDST_1Bit(const std::vector<T>& arr, const Tidx B_S) : data(arr), block_size(B_S) {
@@ -53,14 +53,14 @@ public:
         level_rank.resize(levels);
         level_select.resize(levels);
 
-        // Build the tree 
+        // Build the table
         for (Tidx level {1}; level < levels; ++level) {
             const Tidx half {Tidx(1) << level};
             if (blocks <= half) continue;
             
-            const Tidx num_centers {(blocks - 1 - half) / (half * 2) + 1};
+            const Tidx num_centers {(blocks -1 - half) / (half * 2) + 1};
             
-            // Exactly 1 bit per block, block index is the bit index
+            // Exactly 1 bit per block, block index is  the bit index
             level_rows[level] = sdsl::bit_vector(blocks, 0);
 
             for (Tidx range_idx {0}; range_idx < num_centers; ++range_idx) {
@@ -83,7 +83,7 @@ public:
                 }
 
                 // Build Right
-                Tidx right_min_block {center};
+                Tidx right_min_block {center} ;
                 level_rows[level][center] = 1; // Start of running min is always a new minimum
                 
                 for (Tidx dist {1}; dist < half && center + dist < blocks; ++dist) {
@@ -110,7 +110,7 @@ public:
         const Tidx b_r {r >> log_block};
 
         if (b_l == b_r) {
-            const Tidx bl_min_abs {(b_l << log_block) + base_row[b_l]};
+            const Tidx bl_min_abs {(b_l << log_block) +  base_row[b_l]};
             if (bl_min_abs >= l && bl_min_abs <= r) return bl_min_abs;
             return LinearScan::scan_block(data, l, r);
         }
@@ -149,7 +149,7 @@ public:
         }
 
         // Left Fringe Block 
-        const Tidx start_l {b_l << log_block};
+        const Tidx start_l { b_l << log_block};
         const Tidx bl_min_idx {start_l + base_row[b_l]};
         if (!has_inner || data[bl_min_idx] < data[res]) {
             if (bl_min_idx >= l) {

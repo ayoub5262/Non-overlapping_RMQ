@@ -108,12 +108,13 @@ public:
         T best_val;
 
         if (b_l == b_r) {
-            const Tidx bl_min {(b_l << log_block) + base_row[b_l]};
+            const Tidx bl_min {(b_l << log_block) + static_cast<Tidx>(base_row[b_l])};
             if (bl_min >= l && bl_min <= r) {
                 return bl_min;
             }
             best_val = data[l];
-            return MiniBlockScanner::scan_ragged(data, mini_base_row, mini_base_val, log_block, log_mini_block, l, r, l, best_val);
+            return MiniBlockScanner::scan_ragged(data, mini_base_row, mini_base_val, 
+                log_block, log_mini_block, l, r, l, best_val);
         }
 
         const Tidx inner_b_l {b_l + 1};
@@ -143,7 +144,7 @@ public:
                 if (block_base_val[b_l] < block_base_val[best_block]) best_block = b_l;
                 if (block_base_val[b_r] < block_base_val[best_block]) best_block = b_r;
 
-                const Tidx best_min_idx {(best_block << log_block) + base_row[best_block]};
+                const Tidx best_min_idx {(best_block << log_block) + static_cast<Tidx>(base_row[best_block])};
                 if (l <= best_min_idx && best_min_idx <= r) {
                     return best_min_idx;
                 }
@@ -155,8 +156,8 @@ public:
             }
         } else {
             // Adjacent blocks (b_r == b_l + 1): Check if either block minimum is inside [l, r]
-            const Tidx bl_min_idx {(b_l << log_block) + base_row[b_l]};
-            const Tidx br_min_idx {(b_r << log_block) + base_row[b_r]};
+            const Tidx bl_min_idx {(b_l << log_block) + static_cast<Tidx>(base_row[b_l])};
+            const Tidx br_min_idx {(b_r << log_block) + static_cast<Tidx>(base_row[b_r])};
             if (bl_min_idx >= l && br_min_idx <= r) {
                 return (block_base_val[b_l] <= block_base_val[b_r]) ? bl_min_idx : br_min_idx;
             }
@@ -169,14 +170,15 @@ public:
         // Left Boundary Scan
         if (block_base_val[b_l] <= best_val) {
             const Tidx start_l {b_l << log_block};
-            const Tidx bl_min_idx {start_l + base_row[b_l]};
+            const Tidx bl_min_idx {start_l + static_cast<Tidx>(base_row[b_l])};
             if (l == start_l || bl_min_idx >= l) {
                 res = bl_min_idx;
                 best_val = block_base_val[b_l];
             } else {
                 const Tidx end_l {(b_l + 1) << log_block};
                 const Tidx bound {std::min(static_cast<Tidx>(data.size()), end_l) - 1};
-                res = MiniBlockScanner::scan_ragged(data, mini_base_row, mini_base_val, log_block, log_mini_block, l, bound, res, best_val);
+                res = MiniBlockScanner::scan_ragged(data, mini_base_row, mini_base_val, 
+                    log_block, log_mini_block, l, bound, res, best_val);
                 best_val = data[res];
             }
         }
@@ -185,11 +187,12 @@ public:
         if (block_base_val[b_r] < best_val) {
             const Tidx start_r {b_r << log_block};
             const Tidx end_r {std::min(static_cast<Tidx>(data.size()) - 1, ((b_r + 1) << log_block) - 1)};
-            const Tidx br_min_idx {start_r + base_row[b_r]};
+            const Tidx br_min_idx {start_r + static_cast<Tidx>(base_row[b_r])};
             if (r == end_r || br_min_idx <= r) {
                 return br_min_idx;
             } else {
-                return MiniBlockScanner::scan_ragged(data, mini_base_row, mini_base_val, log_block, log_mini_block, start_r, r, res, best_val);
+                return MiniBlockScanner::scan_ragged(data, mini_base_row, mini_base_val, 
+                    log_block, log_mini_block, start_r, r, res, best_val);
             }
         }
 

@@ -1,6 +1,6 @@
 /**
  * @file benchmark_common.hpp
- * @brief Common Primitives and Scenario Drivers for RMQ Benchmarking.
+ * @brief A helper file for custom RMQ Benchmarking.
  *
  * Implements high-precision CPU timing routines, memory peak profiling integration
  * (`malloc_count`), synthetic data generators (RAND, LCP, INC, DEC), and CSV formatting.
@@ -24,8 +24,6 @@
 #include "sdsl-lite/include/sdsl/construct.hpp"
 
 using namespace std;
-
-/* A helper file for custom benchmarking */
 
 // Dead Code Elimination barrier (mirrors FL-RMQ benchmark.hpp)
 template<class T>
@@ -202,11 +200,6 @@ template<typename Callback>
 void for_each_scenario(const vector<uint64_t>& sizes, Callback&& cb) {
     for (uint64_t n : sizes) {
         for (const string& data_type : {"RAND", "LCP", "INC", "DEC"}) {
-            // We skip 10^9 for LCP because of OOM at the array generation 
-            if (data_type == "LCP" && n >= 1'000'000'000ULL) {
-                cout << "Skipping LCP for n=" << n << endl;
-                continue;
-            }
             cout << "Generating " << data_type << " data for n=" << n << "..." << flush;
             vector<int> data;
             if      (data_type == "RAND") data = gen_random_perm(n);

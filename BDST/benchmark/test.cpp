@@ -3,7 +3,7 @@
  * @brief Automated Correctness Verification Suite.
  *
  * Validates range query results for all BDST and Blocked Segment Tree variations
- * across randomized interval spans against authoritative SDSL Sparse Table.
+ * across randomized interval spans against  SDSL Sparse Table.
  */
 
 #include "benchmark_common.hpp"
@@ -93,7 +93,7 @@ void run_tests() {
         uniform_int_distribution<uint64_t> dist_len(1, n);
 
         int errors_1bit {0};
-        int errors_bdst1 {0};
+        int errors_bdst1 { 0};
         int errors_bdst2 {0};
         int errors_b_segtree {0};
         int errors_bdst {0};

@@ -31,8 +31,8 @@ int main() {
         const int k1 {12}; // 2^12 = 4096
         const int k2 {8}; // 2^8 = 256
 
-        for (int rotate {0}; rotate < 6; ++rotate) {
-            switch ((rotate + rotation) % 6) {
+        for (int rotate {0}; rotate < 5; ++rotate) {
+            switch ((rotate + rotation) % 5) {
                 case 0:
                     run_generic(csv, "BDST_1Bit(4096-256)", 4096, n, data_type, timer,
                         [&]() { return std::make_unique<T1>(data, 4096); },
@@ -77,19 +77,7 @@ int main() {
                             return (size_t)rmq(l, r);
                         });
                     break;
-                case 5:
-                    if (n > 100'000'000) {
-                        cout << "    -> Skipping Disjoint Sparse Table for n=" << n << endl;
-                        break;
-                    }
-                    run_generic(csv, "Disjoint_Sparse_Table", 0, n, data_type, timer,
-                        [&]() {
-                            return std::make_unique<DisjointSparseTable>(data);
-                        },
-                        [](DisjointSparseTable& rmq, uint32_t l, uint32_t r) -> size_t {
-                            return (size_t)rmq.query(l, r);
-                        });
-                    break;
+            
             }
         }
         ++rotation;
