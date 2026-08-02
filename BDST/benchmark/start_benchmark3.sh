@@ -7,4 +7,4 @@ cmake ..
 make run_benchmark3 -j$(nproc)
 
 echo "Running run_benchmark3..."
-taskset -c 0 ./run_benchmark3
+taskset -c 4 ./run_benchmark3

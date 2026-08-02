@@ -75,14 +75,14 @@ public:
 
         // Case 2: Query spans multiple blocks
         // Left boundary (intra block)
-        DTidx end_l { (b_l + 1) * BLOCK_SIZE };
-        for (DTidx i { l + 1 }; i < end_l; ++i) {
+        DTidx end_bl { (b_l + 1) * BLOCK_SIZE };
+        for (DTidx i { l + 1 }; i < end_bl; ++i) {
             res = std::min(res, raw_data[i]);
         }
 
         // Right boundary (intra block)
-        DTidx start_r { b_r * BLOCK_SIZE };
-        for (DTidx i { start_r }; i <= r; ++i) {
+        DTidx start_br { b_r * BLOCK_SIZE };
+        for (DTidx i { start_br }; i <= r; ++i) {
             res = std::min(res, raw_data[i]);
         }
 

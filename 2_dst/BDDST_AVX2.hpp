@@ -151,12 +151,12 @@ public:
 
         // Case 2: Query spans multiple blocks
         // Left partial block
-        DTidx end_l { (b_l + 1) * BLOCK_SIZE - 1 }; // inclusive
-        DTidx res = intra_block_min(l, end_l);
+        DTidx end_bl { (b_l + 1) * BLOCK_SIZE - 1 }; // inclusive
+        DTidx res = intra_block_min(l, end_bl);
 
         // Right partial block
-        DTidx start_r { b_r * BLOCK_SIZE };
-        DTidx res_r = intra_block_min(start_r, r);
+        DTidx start_br { b_r * BLOCK_SIZE };
+        DTidx res_r = intra_block_min(start_br, r);
         res = (raw_data[res_r] < raw_data[res]) ? res_r : res; // branchless merge
 
         // Intermediate full blocks via DST

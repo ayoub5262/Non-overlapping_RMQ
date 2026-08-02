@@ -83,18 +83,18 @@ public:
 
         // Left boundary 
         if (data[res] >= data[table[b_l]]){
-            Tidx end_l { (b_l + 1) << BLOCK_SHIFT };
-            if(l + 1 < end_l){
-                Tidx left_min {QueryStrategy::scan_block(data, l + 1, end_l - 1)};
+            Tidx end_bl { (b_l + 1) << BLOCK_SHIFT };
+            if(l + 1 < end_bl){
+                Tidx left_min {QueryStrategy::scan_block(data, l + 1, end_bl - 1)};
                 if(data[res] > data[left_min]) res = left_min;
             }
         }
         
         // Right boundary
         if (data[res] >= data[table[b_r]]){
-            Tidx start_r { b_r << BLOCK_SHIFT  };
-            if(start_r <= r){
-                Tidx right_min {QueryStrategy::scan_block(data, start_r, r)};
+            Tidx start_br { b_r << BLOCK_SHIFT  };
+            if(start_br <= r){
+                Tidx right_min {QueryStrategy::scan_block(data, start_br, r)};
                 if(data[res] > data[right_min]) res = right_min;
             }
         }

@@ -62,7 +62,10 @@ public:
     }
 
     uint32_t query(uint32_t l, uint32_t r) const {
+        assert(l <= r);
+        assert( r <= data.size());
         if (l == r) return l;
+        
         // Find the highest level where l and r lie in different blocks
         int h {std::bit_width(l ^ r)};
 

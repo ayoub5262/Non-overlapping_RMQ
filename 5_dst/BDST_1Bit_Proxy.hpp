@@ -162,9 +162,9 @@ public:
         // Left Boundary Scan
         const Tidx bl_min {(b_l << log_block) + base_row[b_l]};
         if (data[bl_min] <= data[res]) {
-            const Tidx end_l {(b_l + 1) << log_block};
-            if (l < end_l - 1) {
-                const Tidx left_min {OneLookUpLinearScanProxy::scan_block<Container, Tidx>(data, l, end_l - 1)};
+            const Tidx end_bl {(b_l + 1) << log_block};
+            if (l < end_bl - 1) {
+                const Tidx left_min {OneLookUpLinearScanProxy::scan_block<Container, Tidx>(data, l, end_bl - 1)};
                 if (data[left_min] <= data[res]) res = left_min;
             }
         }
@@ -172,9 +172,9 @@ public:
         // Right Boundary Scan
         const Tidx br_min {(b_r << log_block) + base_row[b_r]};
         if (data[br_min] <= data[res]) {
-            const Tidx start_r {b_r << log_block};
-            if (start_r <= r) {
-                const Tidx right_min {OneLookUpLinearScanProxy::scan_block<Container, Tidx>(data, start_r, r)};
+            const Tidx start_br {b_r << log_block};
+            if (start_br <= r) {
+                const Tidx right_min {OneLookUpLinearScanProxy::scan_block<Container, Tidx>(data, start_br, r)};
                 if (data[right_min] <= data[res]) res = right_min;
             }
         }

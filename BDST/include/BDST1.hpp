@@ -67,6 +67,10 @@ public:
     }
 
     Tidx query(Tidx l, Tidx r) const {
+        assert(l <= r);
+        assert( r <= data.size());
+        if (l == r) return l;
+        
         const Tidx b_l {l >> log_block_size};
         const Tidx b_r {r >> log_block_size};
         const Tidx* row_0 {&table[0]};
@@ -108,8 +112,8 @@ public:
             if (l_min_abs >= l) {
                 res = l_min_abs; 
             } else {
-                Tidx end_l {(inner_b_l << log_block_size) - 1};
-                Tidx l_min_idx {scan_block(data, l, end_l)};
+                Tidx end_bl {(inner_b_l << log_block_size) - 1};
+                Tidx l_min_idx {scan_block(data, l, end_bl)};
                 if (data[l_min_idx] < data[res]) res = l_min_idx;
             }
         }
@@ -121,8 +125,8 @@ public:
             if (r_min_abs <= r) {
                 res = r_min_abs; 
             } else {
-                Tidx start_r {b_r << log_block_size};
-                Tidx r_min_idx {scan_block(data, start_r, r)};
+                Tidx start_br {b_r << log_block_size};
+                Tidx r_min_idx {scan_block(data, start_br, r)};
                 if (data[r_min_idx] < data[res]) res = r_min_idx;
             }
         }

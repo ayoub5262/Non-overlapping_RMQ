@@ -157,9 +157,9 @@ public:
         // Left Boundary Scan
         const Tidx b_l_min {(b_l << log_block) + base_row[b_l]};
         if (data[res] >= data[b_l_min]) {
-            const Tidx end_l {(b_l + 1) << log_block};
-            if (l + 1 < end_l) {
-                const Tidx left_min {QueryStrategy::scan_block(data, l + 1, end_l - 1)};
+            const Tidx end_bl {(b_l + 1) << log_block};
+            if (l + 1 < end_bl) {
+                const Tidx left_min {QueryStrategy::scan_block(data, l + 1, end_bl - 1)};
                 if (data[res] > data[left_min]) res = left_min;
             }
         }
@@ -167,9 +167,9 @@ public:
         // Right Boundary Scan
         const Tidx b_r_min {(b_r << log_block) + base_row[b_r]};
         if (data[res] >= data[b_r_min]) {
-            const Tidx start_r {b_r << log_block};
-            if (start_r <= r) {
-                const Tidx right_min {QueryStrategy::scan_block(data, start_r, r)};
+            const Tidx start_br {b_r << log_block};
+            if (start_br <= r) {
+                const Tidx right_min {QueryStrategy::scan_block(data, start_br, r)};
                 if (data[res] > data[right_min]) res = right_min;
             }
         }

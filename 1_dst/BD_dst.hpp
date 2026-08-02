@@ -73,14 +73,14 @@ public:
 
         // Case 2: Query spans multiple blocks
         // Left boundary (intra block)
-        Tidx end_l { (b_l + 1) * BLOCK_SIZE };
-        for (Tidx i { l + 1 }; i < end_l; ++i) {
+        Tidx end_bl { (b_l + 1) * BLOCK_SIZE };
+        for (Tidx i { l + 1 }; i < end_bl; ++i) {
             if (raw_data[i] < raw_data[res]) res = i;
         }
 
         // Right boundary (intra block)
-        Tidx start_r { b_r * BLOCK_SIZE };
-        for (Tidx i { start_r }; i <= r; ++i) {
+        Tidx start_br { b_r * BLOCK_SIZE };
+        for (Tidx i { start_br }; i <= r; ++i) {
             if (raw_data[i] < raw_data[res]) res = i;
         }
 

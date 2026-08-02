@@ -242,13 +242,13 @@ public:
 
         // Left boundary scan.
         if (data[res] >= data[bl_min]) {
-            const Tidx end_l = (b_l + 1) << BLOCK_SHIFT;
-            if (l + 1 < end_l) {
+            const Tidx end_bl = (b_l + 1) << BLOCK_SHIFT;
+            if (l + 1 < end_bl) {
                 if (BLOCK_SIZE >= 1024) { 
-                    const Tidx left_min = LinearSkipScan::scan_block(data, l + 1, end_l - 1, data[bl_min]);
+                    const Tidx left_min = LinearSkipScan::scan_block(data, l + 1, end_bl - 1, data[bl_min]);
                     if (data[res] > data[left_min]) res = left_min;
                 } else {
-                     const Tidx left_min = QueryStrategy::scan_block(data, l + 1, end_l - 1);
+                     const Tidx left_min = QueryStrategy::scan_block(data, l + 1, end_bl - 1);
                     if (data[res] > data[left_min]) res = left_min;
                 }
             }
@@ -256,13 +256,13 @@ public:
 
         // Right boundary scan.
         if (data[res] >= data[br_min]) {
-            const Tidx start_r = b_r << BLOCK_SHIFT;
-            if (start_r <= r) {
+            const Tidx start_br = b_r << BLOCK_SHIFT;
+            if (start_br <= r) {
                 if (BLOCK_SIZE >= 1024) { 
-                    const Tidx right_min = LinearSkipScan::scan_block(data, start_r, r, data[br_min]);
+                    const Tidx right_min = LinearSkipScan::scan_block(data, start_br, r, data[br_min]);
                     if (data[res] > data[right_min]) res = right_min;
                 } else {
-                     const Tidx right_min = QueryStrategy::scan_block(data, start_r, r);
+                     const Tidx right_min = QueryStrategy::scan_block(data, start_br, r);
                     if (data[res] > data[right_min]) res = right_min;
                 }
             }

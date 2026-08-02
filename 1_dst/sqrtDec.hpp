@@ -37,13 +37,13 @@ public:
         // case 2: query span multiple blocks
 
         // read the left intra block
-        int end_l {(b_l + 1) * block_size};
-        for (int i{l}; i < end_l; ++i)
+        int end_bl {(b_l + 1) * block_size};
+        for (int i{l}; i < end_bl; ++i)
             res = data[res] > data[i] ? i : res;
 
         // read the right intra block
-        int start_r {(b_r) * block_size};
-        for (int i{start_r}; i <= r; ++i)
+        int start_br {(b_r) * block_size};
+        for (int i{start_br}; i <= r; ++i)
             res = data[res] > data[i] ? i : res;
 
         // read the inter blocks

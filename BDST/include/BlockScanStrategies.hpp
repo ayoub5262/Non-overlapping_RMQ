@@ -112,8 +112,8 @@ struct MiniBlockScanner {
                 best_val = mini_base_val[mb_l];
             }
         } else if (mini_base_val[mb_l] <= best_val) {
-            Tidx end_l {(mb_l + 1) << log_mini_block};
-            Tidx scan_res {LinearScan::scan_block(data, ql, end_l - 1)};
+            Tidx end_bl {(mb_l + 1) << log_mini_block};
+            Tidx scan_res {LinearScan::scan_block(data, ql, end_bl - 1)};
             if (data[scan_res] <= best_val) {
                 res = scan_res;
                 best_val = data[scan_res];
@@ -142,8 +142,8 @@ struct MiniBlockScanner {
                 best_val = mini_base_val[mb_r];
             }
         } else if (mini_base_val[mb_r] < best_val) {
-            Tidx start_r {mb_r << log_mini_block};
-            Tidx scan_res {LinearScan::scan_block(data, start_r, qr)};
+            Tidx start_br {mb_r << log_mini_block};
+            Tidx scan_res {LinearScan::scan_block(data, start_br, qr)};
             if (data[scan_res] < best_val) {
                 res = scan_res;
                 best_val = data[scan_res];

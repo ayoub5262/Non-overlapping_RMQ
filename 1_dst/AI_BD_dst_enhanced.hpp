@@ -226,12 +226,12 @@ public:
         }
 
         // Left boundary partial outer block
-        DTidx end_l = (b_l + 1) << LOG_OUTER;
-        DTidx res   = partial_min(l, end_l - 1);
+        DTidx end_bl = (b_l + 1) << LOG_OUTER;
+        DTidx res   = partial_min(l, end_bl - 1);
 
         // Right boundary partial outer block
-        DTidx start_r = b_r << LOG_OUTER;
-        DTidx rcand   = partial_min(start_r, r);
+        DTidx start_br = b_r << LOG_OUTER;
+        DTidx rcand   = partial_min(start_br, r);
         if (raw_data[rcand] < raw_data[res]) res = rcand;
 
         // Intermediate full outer blocks via DST

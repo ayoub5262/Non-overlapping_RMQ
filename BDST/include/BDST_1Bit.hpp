@@ -30,12 +30,12 @@ class BDST_1Bit {
     std::vector<sdsl::select_support_mcl<1>> level_select;
 
     const std::vector<T>& data;
-    Tidx block_size, log_block,  blocks, levels;
+    Tidx n, block_size, log_block,  blocks, levels;
 
 public:
     BDST_1Bit(const std::vector<T>& arr, const Tidx B_S) : data(arr), block_size(B_S) {
         log_block = std::bit_width(static_cast<unsigned>(block_size)) - 1;
-        Tidx n {static_cast<Tidx>(data.size())};
+        n = static_cast<Tidx>(data.size());
         blocks = (n + block_size - 1) / block_size;
         levels = blocks <= 1 ? 1 : std::bit_width(static_cast<unsigned>(blocks - 1));
 
@@ -44,7 +44,7 @@ public:
         for (Tidx i { 0 }; i < blocks; ++i) {
             Tidx min_idx {i << log_block};
             Tidx end {std::min(n, (i + 1) << log_block)};
-            min_idx = LinearScan::scan_block(data, min_idx, end - 1);
+            min_idx = OneLookUpLinearScan::scan_block(data, min_idx, end - 1);
             base_row[i] = min_idx - (i << log_block);
         }
 
@@ -106,77 +106,75 @@ public:
     }
 
     Tidx query(Tidx l, Tidx r) const {
+        assert(l <= r);
+        assert( r < n);
+
         const Tidx b_l {l >> log_block};
         const Tidx b_r {r >> log_block};
 
         if (b_l == b_r) {
-            const Tidx bl_min_abs {(b_l << log_block) +  base_row[b_l]};
-            if (bl_min_abs >= l && bl_min_abs <= r) return bl_min_abs;
+            Tidx bl_min_idx {(b_l << log_block) +  base_row[b_l]};
+            if (bl_min_idx >= l && bl_min_idx <= r) return bl_min_idx;
             return LinearScan::scan_block(data, l, r);
         }
 
         const Tidx inner_b_l {b_l + 1};
         const Tidx inner_b_r {b_r - 1};
         Tidx res {l};
-        bool has_inner {false};
 
         if (inner_b_l <= inner_b_r) {
-            has_inner = true;
-            const int bw {std::bit_width(static_cast<unsigned>(inner_b_l ^ inner_b_r))};
-            Tidx inner_best;
-
-            if (bw <= 1) {
-                inner_best = inner_b_l;
-                if (inner_b_l != inner_b_r) {
-                    const Tidx idx_l {(inner_b_l << log_block) + base_row[inner_b_l]};
-                    const Tidx idx_r {(inner_b_r << log_block) + base_row[inner_b_r]};
-                    if (data[idx_r] < data[idx_l]) inner_best = inner_b_r;
-                }
+            
+            if (inner_b_l == inner_b_r) {
+                res = (inner_b_l << log_block) + static_cast<Tidx>(base_row[inner_b_l]);
+            } else if (inner_b_r == inner_b_l + 1) {
+                const Tidx idx_l {(inner_b_l << log_block) + base_row[inner_b_l]};
+                const Tidx idx_r {(inner_b_r << log_block) + base_row[inner_b_r]};
+                res = (data[idx_l] > data[idx_r]) ? idx_r : idx_l;
             } else {
+                const int bw {std::bit_width(inner_b_l ^ inner_b_r)};
                 const Tidx level {static_cast<Tidx>(bw - 1)};
                 // Left lookup using Rank/Select
                 // We want the first 1 at or to the right of inner_b_l
                 const Tidx actual_block_l {level_select[level](level_rank[level](inner_b_l) + 1)};
+
                 // Right lookup using Rank/Select
                 // We want the last 1 at or to the left of inner_b_r
                 const Tidx actual_block_r {level_select[level](level_rank[level](inner_b_r + 1))};
                 
                 const Tidx idx_l {(actual_block_l << log_block) + base_row[actual_block_l]};
                 const Tidx idx_r {(actual_block_r << log_block) + base_row[actual_block_r]};
-                inner_best = (data[idx_l] <= data[idx_r]) ? actual_block_l : actual_block_r;
+                res = (data[idx_l] > data[idx_r]) ? idx_r : idx_l;
             }
-            res = (inner_best << log_block) + base_row[inner_best];
         }
 
         // Left Fringe Block 
-        const Tidx start_l { b_l << log_block};
-        const Tidx bl_min_idx {start_l + base_row[b_l]};
-        if (!has_inner || data[bl_min_idx] < data[res]) {
+        const Tidx start_bl { b_l << log_block};
+        const Tidx bl_min_idx {start_bl + base_row[b_l]};
+        if (data[bl_min_idx] <= data[res]) {
             if (bl_min_idx >= l) {
                 // Precomputed minimum lies within query bounds we avoid the scan
                 res = bl_min_idx;
             } else {
-                const Tidx end_l {(b_l + 1) << log_block};
-                const Tidx left_min {LinearScan::scan_block(data, l, end_l - 1)};
-                if (!has_inner || data[left_min] <= data[res]) {
+                const Tidx end_bl {((b_l + 1) << log_block) - 1};
+                const Tidx left_min {LinearScan::scan_block(data, l, end_bl)};
+                if (data[left_min] <= data[res]) {
                     res = left_min;
                 }
             }
         }
 
+
+        
         // Right Fringe Block
-        const Tidx start_r {b_r << log_block};
-        const Tidx end_r {std::min(static_cast<Tidx>(data.size()) - 1, ((b_r + 1) << log_block) - 1)};
-        const Tidx br_min_idx {start_r + base_row[b_r]};
+        const Tidx start_br {b_r << log_block};
+        const Tidx br_min_idx {start_br + base_row[b_r]};
         if (data[br_min_idx] < data[res]) {
-            if (br_min_idx <= r || r == end_r) {
+            if (br_min_idx <= r) {
                 // Precomputed minimum lies within query bounds we avoid the scan
-                res = br_min_idx;
+                return br_min_idx;
             } else {
-                const Tidx right_min {LinearScan::scan_block(data, start_r, r)};
-                if (data[right_min] < data[res]) {
-                    res = right_min;
-                }
+                const Tidx right_min {LinearScan::scan_block(data, start_br, r)};
+                if (data[right_min] < data[res]) return right_min;
             }
         }
 
