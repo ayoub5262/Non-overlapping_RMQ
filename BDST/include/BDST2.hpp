@@ -132,17 +132,18 @@ public:
         
         const Tidx b_l {l >> log_block};
         const Tidx b_r {r >> log_block};
+        T best_val {std::numeric_limits<T>::max()};
+        Tidx res {l};
 
         if (b_l == b_r) {
             const Tidx bl_min {(b_l << log_block) + static_cast<Tidx>(base_row[b_l])};
             if (bl_min >= l && bl_min <= r) {
                 return bl_min;
             }
-            return LinearScan::scan_block(data, l, r);
+            return MiniBlockScanner::scan_ragged(data, mini_base_row, mini_base_val, 
+                log_block, log_mini_block, l, r, l, best_val);
         }
 
-        Tidx res = l;
-        T best_val;
 
         const Tidx inner_b_l {b_l + 1};
         const Tidx inner_b_r {b_r - 1};
@@ -188,8 +189,6 @@ public:
                 if (block_base_val[b_r] < block_base_val[b_l]) return br_min_idx;
                 res = br_min_idx;
                 best_val = block_base_val[b_r];
-            } else {
-                best_val = std::numeric_limits<T>::max();
             }
         }
 

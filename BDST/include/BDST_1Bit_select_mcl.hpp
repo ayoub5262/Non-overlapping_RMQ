@@ -1,10 +1,9 @@
 /**
- * @file BDST_1Bit.hpp
+ * @file BDST_1Bit_mcl.hpp
  * @brief 1-Bit Decision Vector Blocked Disjoint Sparse Table.
  *
- * Replaces traditional explicit multi-bit index tables with succinct 1-bit decision
- * vectors per hierarchy level, leveraging rank and select structures to significantly
- * compress index footprint.
+ * Replaces multi-bit index tables with 1-bit decision vectors per hierarchy level, 
+ * using rank_v5 and select_mcl from SDSL to reconstruct the minimum idex.
  */
 
 #pragma once
@@ -44,7 +43,7 @@ public:
         for (Tidx i { 0 }; i < blocks; ++i) {
             Tidx min_idx {i << log_block};
             Tidx end {std::min(n, (i + 1) << log_block)};
-            min_idx = OneLookUpLinearScan::scan_block(data, min_idx, end - 1);
+            min_idx = LinearScan::scan_block(data, min_idx, end - 1);
             base_row[i] = min_idx - (i << log_block);
         }
 

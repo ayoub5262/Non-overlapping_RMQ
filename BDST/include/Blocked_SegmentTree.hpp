@@ -2,7 +2,7 @@
  * @file Blocked_SegmentTree.hpp
  * @brief Blocked Segment Tree RMQ Index.
  *
- * Implements a hybrid RMQ data structure building an internal bottom-up tournament
+ * Implements a hybrid RMQ data structure building an interative heap-based
  * segment tree over block minima
  */
 

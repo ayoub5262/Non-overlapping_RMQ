@@ -1,6 +1,6 @@
 /**
- * @file benchmark1.cpp
- * @brief Compares BDST_1Bit against succinct RMQ structures (SDSL_new_rec and BP_RMQ64).
+ * @file benchmark4.cpp
+ * @brief Compares BDST_1Bit different out-of-block implementations .
  */
 
 #include "benchmark_common.hpp"

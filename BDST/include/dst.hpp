@@ -2,8 +2,8 @@
  * @file dst.hpp
  * @brief Classical Disjoint Sparse Table (DST).
  *
- * Provides a canonical O(N log N) space, O(1) query latency Disjoint Sparse Table
- * implementation used as an uncompressed, highly stable latency baseline.
+ * Provides a O(N log N) space, O(1) query latency Disjoint Sparse Table
+ * implementation used as an uncompressed, stable latency baseline.
  */
 
 #pragma once

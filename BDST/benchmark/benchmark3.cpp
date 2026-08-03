@@ -33,7 +33,7 @@ int main() {
         for (int rotate {0}; rotate < 5; ++rotate) {
             switch ((rotate + rotation) % 5) {
                 case 0:
-                    run_generic(csv, "BDST_1Bit(4096-256)", 4096, n, data_type, timer,
+                    run_generic(csv, "BDST(4096-256)", 4096, n, data_type, timer,
                         [&]() { return std::make_unique<T1>(data, 4096); },
                         [](T1& rmq, uint32_t l, uint32_t r) -> size_t {
                             return (size_t)rmq.query(l, r);
