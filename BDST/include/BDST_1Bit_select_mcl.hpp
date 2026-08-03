@@ -22,7 +22,7 @@
 
 
 template <typename T = int, typename Tidx = std::uint64_t>
-class BDST_1Bit_select {
+class BDST_1Bit_select_mcl {
     sdsl::int_vector<0> base_row;
     
     std::vector<sdsl::bit_vector> level_rows;
@@ -33,7 +33,7 @@ class BDST_1Bit_select {
     Tidx n, block_size, log_block,  blocks, levels;
 
 public:
-    BDST_1Bit_select(const std::vector<T>& arr, const Tidx B_S) : data(arr), block_size(B_S) {
+    BDST_1Bit_select_mcl(const std::vector<T>& arr, const Tidx B_S) : data(arr), block_size(B_S) {
         log_block = std::bit_width(static_cast<unsigned>(block_size)) - 1;
         n = static_cast<Tidx>(data.size());
         blocks = (n + block_size - 1) / block_size;

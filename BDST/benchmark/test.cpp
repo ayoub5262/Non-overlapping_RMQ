@@ -8,7 +8,9 @@
 
 #include "benchmark_common.hpp"
 
-#include "BDST/include/BDST_1Bit.hpp"
+#include "BDST/include/BDST_1Bit_wordscan.hpp"
+#include "BDST/include/BDST_1Bit_select_il.hpp"
+#include "BDST/include/BDST_1Bit_select_mcl.hpp"
 #include "BDST/include/BDST_1Bit_Fast.hpp"
 #include "BDST/include/BDST.hpp"
 #include "BDST/include/BDST1.hpp"
@@ -76,8 +78,16 @@ void run_tests() {
         BDST<int, uint64_t> bdst_slow(data, B);
         cout << " Done" << endl;
 
-        cout << "Building BDST_1Bit..." << flush;
-        BDST_1Bit<int, uint64_t> bdst_1bit_slow(data, B);
+        cout << "Building BDST_1Bit_wordscan..." << flush;
+        BDST_1Bit<int, uint64_t> bdst_1bit_wordscan(data, B);
+        cout << " Done" << endl;        
+
+        cout << "Building BDST_1Bit_il..." << flush;
+        BDST_1Bit_select_il<int, uint64_t> bdst_1bit_il(data, B);
+        cout << " Done" << endl;
+
+        cout << "Building BDST_1Bit_mcl..." << flush;
+        BDST_1Bit_select_mcl<int, uint64_t> bdst_1bit_mcl(data, B);
         cout << " Done" << endl;
 
         cout << "Building Blocked_SegmentTree..." << flush;
@@ -97,7 +107,9 @@ void run_tests() {
         int errors_bdst2 {0};
         int errors_b_segtree {0};
         int errors_bdst {0};
-        int errors_1bit_slow {0};
+        int errors_1bit_wordscan {0};
+        int errors_1bit_il {0};
+        int errors_1bit_mcl {0};
         int errors_b_segtree_slow {0};
         int errors_st_intvec {0};
 
@@ -133,7 +145,9 @@ void run_tests() {
             check(bdst2, errors_bdst2, "BDST2");
             check(b_segtree, errors_b_segtree, "Blocked_SegmentTree_Fast");
             check(bdst_slow, errors_bdst, "BDST");
-            check(bdst_1bit_slow, errors_1bit_slow, "BDST_1Bit");
+            check(bdst_1bit_wordscan, errors_1bit_wordscan, "BDST_1Bit_wordscan");
+            check(bdst_1bit_il, errors_1bit_il, "BDST_1Bit_il");
+            check(bdst_1bit_mcl, errors_1bit_mcl, "BDST_1Bit_mcl");
             check(b_segtree_slow, errors_b_segtree_slow, "Blocked_SegmentTree");
             check(st_intvec, errors_st_intvec, "ST_IntVec");
         }
@@ -150,7 +164,9 @@ void run_tests() {
         print_result("BDST2", errors_bdst2);
         print_result("Blocked_SegmentTree_Fast", errors_b_segtree);
         print_result("BDST", errors_bdst);
-        print_result("BDST_1Bit", errors_1bit_slow);
+        print_result("BDST_1Bit_wordscan", errors_1bit_wordscan);
+        print_result("BDST_1Bit_il", errors_1bit_il);
+        print_result("BDST_1Bit_mcl", errors_1bit_mcl);
         print_result("Blocked_SegmentTree", errors_b_segtree_slow);
         print_result("ST_IntVec", errors_st_intvec);
     });

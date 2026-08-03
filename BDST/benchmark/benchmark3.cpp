@@ -13,7 +13,6 @@
 #include "BDST/include/BDST2.hpp"
 #include "BDST/include/Blocked_SegmentTree_Fast.hpp"
 #include "sdsl-lite/include/sdsl/rmq_support_sparse_table.hpp"
-#include "BDST/include/dst.hpp"
 
 int main() {
     ofstream csv("benchmark3.csv");

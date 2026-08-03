@@ -6,7 +6,7 @@
 
 #include "benchmark_common.hpp"
 
-#include "BDST/include/BDST_1Bit.hpp"
+#include "BDST/include/BDST_1Bit_wordscan.hpp"
 #include "BDST/include/Blocked_SegmentTree.hpp"
 #include "FL-RMQ/include/fl_rmq.hpp"
 #include <cstdint>
@@ -52,7 +52,7 @@ int main() {
             for (int rotate {0}; rotate < 3; ++rotate) {
                 switch ((rotate + rotation) % 3) {
                     case 0:
-                        run_generic(csv, "BDST_1Bit", B, n, data_type, timer,
+                        run_generic(csv, "BDST", B, n, data_type, timer,
                             [&]() { return std::make_unique<T1>(data, B); },
                             [](T1& rmq, uint64_t l, uint64_t r) -> size_t {
                                 return (size_t)rmq.query(l, r);
