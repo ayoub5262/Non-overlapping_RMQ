@@ -15,10 +15,8 @@
 #include <bit>
 #include <cstdint>
 
-#include "BlockScanStrategies.hpp"
+#include "ScanStrategies.hpp"
 #include "sdsl-lite/include/sdsl/int_vector.hpp"
-#include "sdsl-lite/include/sdsl/rank_support.hpp"
-#include "sdsl-lite/include/sdsl/select_support.hpp"
 
 template <typename T = int, typename Tidx = std::uint64_t>
 class BDST_1Bit_Fast {
@@ -28,8 +26,6 @@ class BDST_1Bit_Fast {
     std::vector<T> mini_base_val;   // data[mini_base_row[i]] cached per mini-block
     
     std::vector<sdsl::bit_vector> level_rows;
-    std::vector<sdsl::rank_support_v5<1>> level_rank;
-    std::vector<sdsl::select_support_mcl<1>> level_select;
 
     const std::vector<T>& data;
     Tidx block_size, log_block, blocks, levels;
@@ -90,8 +86,6 @@ public:
 
         if (levels <= 1) return;
         level_rows.resize(levels);
-        level_rank.resize(levels);
-        level_select.resize(levels);
 
         // Build the tree 
         for (Tidx level {1}; level < levels; ++level) {
@@ -138,9 +132,6 @@ public:
                 }
             }
 
-            // Initialize Rank and Select supports
-            sdsl::util::init_support(level_rank[level], &level_rows[level]);
-            sdsl::util::init_support(level_select[level], &level_rows[level]);
         }
     }
 
@@ -176,10 +167,13 @@ public:
             } else {
                 const int bw {std::bit_width(static_cast<unsigned>(inner_b_l ^ inner_b_r))};
                 const Tidx level {static_cast<Tidx>(bw - 1)};
-                // Left lookup using Rank/Select 
-                const Tidx actual_block_l {static_cast<Tidx>(level_select[level](level_rank[level](inner_b_l) + 1))};
-                // Right lookup using Rank/Select 
-                const Tidx actual_block_r {static_cast<Tidx>(level_select[level](level_rank[level](inner_b_r + 1)))};
+                
+                const uint64_t* words = level_rows[level].data();
+                
+                // Left lookup using raw word scan 
+                const Tidx actual_block_l {static_cast<Tidx>(WordScan::find_next_one(words, inner_b_l))};
+                // Right lookup using raw word scan 
+                const Tidx actual_block_r {static_cast<Tidx>(WordScan::find_prev_one(words, inner_b_r))};
 
                 if (block_base_val[actual_block_r] < block_base_val[actual_block_l]) {
                     inner_best = actual_block_r;

@@ -1,5 +1,5 @@
 /**
- * @file BlockScanStrategies.hpp
+ * @file ScanStrategies.hpp
  * @brief Micro-Architectural Intra-Block Scanning Strategies.
  *
  * Provides specialized linear scanning kernels (LinearScan, LinearSkipScan, and
@@ -9,6 +9,7 @@
 
 #pragma once
 #include <vector>
+#include <cstdint>
 
 
 struct LinearScan {
@@ -60,7 +61,10 @@ struct OneLookUpLinearScan {
 };
 
 
-
+/*
+ * This mini-block ragged boundary scanner is a rewrite of the 
+ * BbST query handling logic originally proposed by Kowalski and Grabowski.
+ */
 struct MiniBlockScanner {
     template <typename T, typename Tidx, typename MiniBaseRow, typename MiniBaseVal>
     static inline Tidx scan_ragged(
@@ -151,5 +155,44 @@ struct MiniBlockScanner {
         }
         
         return res;
+    }
+};
+
+/*
+ Bitwise scanner replacing SDSL rank and select overhead 
+ since bit_vector is an array 64bit integers
+ */
+struct WordScan {
+    template <typename Tidx>
+    static inline Tidx find_next_one(const uint64_t* words, Tidx pos) {
+        Tidx word_idx {pos >> 6}; // pos / 64
+        int bit_in_word {(int)pos & 63}; // pos % 64
+        
+        // Shift right to erase all bits before our target position
+        uint64_t w {words[word_idx] >> bit_in_word};
+        
+        // If there are any 1-bits left, std::countr_zero gives the exact distance to the first one
+        if (w) return (word_idx << 6) + bit_in_word + std::countr_zero(w);
+        
+        // Fallback loop forward until we find a non-zero word
+        do { ++word_idx; } while (!(w = words[word_idx]));
+        return (word_idx << 6) + std::countr_zero(w);
+    }
+
+    template <typename Tidx>
+    static inline Tidx find_prev_one(const uint64_t* words, Tidx pos) {
+        Tidx word_idx {pos >> 6}; // pos / 64
+        int bit_in_word {(int)pos & 63}; // pos % 64
+        
+        // Shift left to push our target bit to the absolute ceiling (index 63)
+        // This erases all bits that came after our target position
+        uint64_t w {words[word_idx] << (63 - bit_in_word)};
+        
+        // If there are any 1-bits, std::countl_zero counts how many zeros exist before the first 1
+        if (w) return (word_idx << 6) + bit_in_word - std::countl_zero(w);
+        
+        // Fallback loop backward until we find a non-zero word
+        do { --word_idx; } while (!(w = words[word_idx]));
+        return (word_idx << 6) + 63 - std::countl_zero(w);
     }
 };

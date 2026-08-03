@@ -14,10 +14,8 @@
 #include <bit>
 #include <cstdint>
 
-#include "BlockScanStrategies.hpp"
+#include "ScanStrategies.hpp"
 #include "sdsl-lite/include/sdsl/int_vector.hpp"
-#include "sdsl-lite/include/sdsl/rank_support.hpp"
-#include "sdsl-lite/include/sdsl/select_support.hpp"
 
 
 
@@ -26,8 +24,6 @@ class BDST_1Bit {
     sdsl::int_vector<0> base_row;
     
     std::vector<sdsl::bit_vector> level_rows;
-    std::vector<sdsl::rank_support_v5<1>> level_rank;
-    std::vector<sdsl::select_support_mcl<1>> level_select;
 
     const std::vector<T>& data;
     Tidx n, block_size, log_block,  blocks, levels;
@@ -50,8 +46,6 @@ public:
 
         if (levels <= 1) return;
         level_rows.resize(levels);
-        level_rank.resize(levels);
-        level_select.resize(levels);
 
         // Build the table
         for (Tidx level {1}; level < levels; ++level) {
@@ -99,9 +93,6 @@ public:
                 }
             }
 
-            // Initialize Rank and Select supports
-            sdsl::util::init_support(level_rank[level], &level_rows[level]);
-            sdsl::util::init_support(level_select[level], &level_rows[level]);
         }
     }
 
@@ -133,13 +124,15 @@ public:
             } else {
                 const int bw {std::bit_width(inner_b_l ^ inner_b_r)};
                 const Tidx level {static_cast<Tidx>(bw - 1)};
-                // Left lookup using Rank/Select
-                // We want the first 1 at or to the right of inner_b_l
-                const Tidx actual_block_l {level_select[level](level_rank[level](inner_b_l) + 1)};
+                const uint64_t* words {level_rows[level].data()};
 
-                // Right lookup using Rank/Select
+                // Left lookup using raw word scan
+                // We want the first 1 at or to the right of inner_b_l
+                const Tidx actual_block_l {WordScan::find_next_one(words, inner_b_l)};
+
+                // Right lookup using raw word scan
                 // We want the last 1 at or to the left of inner_b_r
-                const Tidx actual_block_r {level_select[level](level_rank[level](inner_b_r + 1))};
+                const Tidx actual_block_r {WordScan::find_prev_one(words, inner_b_r)};
                 
                 const Tidx idx_l {(actual_block_l << log_block) + base_row[actual_block_l]};
                 const Tidx idx_r {(actual_block_r << log_block) + base_row[actual_block_r]};

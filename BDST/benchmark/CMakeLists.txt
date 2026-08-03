@@ -108,6 +108,26 @@ target_link_libraries(run_benchmark3
     dl
 )
 
+#  Benchmark Executable (benchmark4.cpp) 
+add_executable(run_benchmark4 benchmark4.cpp )
+target_include_directories(run_benchmark4 PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${BDST_INCLUDE_DIR}
+    ${ROOT_DIR}
+    /home/ayoub/include
+    ${ROOT_DIR}/sdsl-lite/include
+)
+target_link_directories(run_benchmark4 PRIVATE /home/ayoub/lib)
+
+target_link_libraries(run_benchmark4
+    PRIVATE
+    sdsl
+    divsufsort
+    divsufsort64
+    malloc_count_lib
+    dl
+)
+
 
 # Test Executable (test.cpp)
 add_executable(run_test test.cpp)

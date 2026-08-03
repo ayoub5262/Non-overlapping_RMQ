@@ -13,7 +13,7 @@
 #include <bit>
 #include <cstdint>
 
-#include "BlockScanStrategies.hpp"
+#include "ScanStrategies.hpp"
 #include "sdsl-lite/include/sdsl/int_vector.hpp"
 
 // Sparse Table with relative offset encoding and per level sdsl::int_vector<> bit-packing.

@@ -14,7 +14,7 @@
 #include <cstdint>
 #include <limits>
 
-#include "BlockScanStrategies.hpp"
+#include "ScanStrategies.hpp"
 #include "sdsl-lite/include/sdsl/int_vector.hpp"
 
 template <typename T = int, typename Tidx = std::uint64_t>

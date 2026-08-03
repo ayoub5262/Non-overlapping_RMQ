@@ -14,7 +14,7 @@
 #include <memory>
 #include <cstdint>
 
-#include "BlockScanStrategies.hpp"
+#include "ScanStrategies.hpp"
 
 template <typename T = int , typename Tidx = std::uint64_t>
 class BDST {
