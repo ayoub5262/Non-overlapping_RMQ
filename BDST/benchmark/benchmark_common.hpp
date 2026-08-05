@@ -9,6 +9,7 @@
 #pragma once
 
 #include <chrono>
+#include <ostream>
 #include <vector>
 #include <random>
 #include <numeric>
@@ -25,7 +26,7 @@
 
 using namespace std;
 
-// Dead Code Elimination barrier (mirrors FL-RMQ benchmark.hpp)
+// Dead Code Elimination barrier (from FL-RMQ benchmark)
 template<class T>
 void do_not_optimize(T const &value) {
     asm volatile("" : : "r,m"(value) : "memory");
@@ -42,10 +43,18 @@ inline vector<int> gen_random_perm(uint64_t n) {
 
 inline vector<int> gen_lcp_array(uint64_t n) {
     string text(n, 'A');
-    mt19937 rng(42);
-    uniform_int_distribution<char> dist('A', 'Z');
-    for (uint64_t i {0}; i < n; ++i)
-        text[i] = dist(rng);
+    ifstream file("../english.1024MB", ios::binary);
+    if(file){
+        file.read(&text[0], n);
+        // For n = 10^9 the program crush at construct_im because the file contains zero symbols
+        replace(text.begin(), text.end(),'\0', 'A');
+        cout << " english " << flush;
+    } else {
+        mt19937 rng(42);
+        uniform_int_distribution<char> dist('A', 'Z');
+        for (uint64_t i {0}; i < n; ++i)
+            text[i] = dist(rng);
+    }
     sdsl::cst_sct3<> cst;
     sdsl::construct_im(cst, text, 1);
     vector<int> v(n);
@@ -58,10 +67,10 @@ inline vector<int> gen_lcp_array(uint64_t n) {
 inline vector<int> gen_increasing_trend(uint64_t n, int delta = 10000) {
     vector<int> v(n);
     mt19937 rng(42);
-    for (uint64_t i {0}; i < n; ++i) {
-        uniform_int_distribution<int> dist(-delta, delta);
+    uniform_int_distribution<int> dist(-delta, delta);
+    for (uint64_t i {0}; i < n; ++i) 
         v[i] = static_cast<int>(i) + dist(rng);
-    }
+    
     return v;
 }
 
@@ -69,10 +78,10 @@ inline vector<int> gen_increasing_trend(uint64_t n, int delta = 10000) {
 inline vector<int> gen_decreasing_trend(uint64_t n, int delta = 10000) {
     vector<int> v(n);
     mt19937 rng(42);
-    for (uint64_t i { 0 }; i < n; ++i) {
-        uniform_int_distribution<int> dist(-delta, delta);
+    uniform_int_distribution<int> dist(-delta, delta);
+    for (uint64_t i { 0 }; i < n; ++i) 
         v[i] = static_cast<int>(n - i) + dist(rng);
-    }
+    
     return v;
 }
 
@@ -81,11 +90,11 @@ inline vector<int> gen_decreasing_trend(uint64_t n, int delta = 10000) {
 struct QueryPair { uint64_t l, r; };
 
 // Generates k queries each of exactly range_len elements [l, l+range_len-1].
-inline vector<QueryPair> gen_queries_with_range(uint64_t n, uint64_t range_len, int k) {
+inline vector<QueryPair> gen_queries_with_range(uint64_t n, int seed_offset ,uint64_t range_len, int k) {
     if (range_len >= n) return {};
     vector<QueryPair> queries;
     queries.reserve(k);
-    mt19937 rng(789);
+    mt19937 rng(789 + seed_offset);
     uniform_int_distribution<uint64_t> dist(0, n - range_len);
     for (int i {0}; i < k; ++i) {
         uint64_t l { dist(rng) };
@@ -171,23 +180,23 @@ void run_generic(ofstream& csv, const string& algo_name, int block_size,
 
     size_t sink { 0 };
     for (uint64_t range_len : query_ranges) {
-        auto queries {gen_queries_with_range(n, range_len, NUM_QUERIES)};
-        if (queries.empty()) continue;
-
-        // Warm-up  prime caches 
-        for (int i { 0 }; i < NUM_WARMUP; ++i)
-            sink ^= query_fn(*rmq_ptr, queries[i % NUM_QUERIES].l, queries[i % NUM_QUERIES].r);
+        if (range_len >= n) continue;
+        // Measure query time Best of 5 batches
+        double best_query_cpu { 1e18 }; 
+        for (int iter {0}; iter < 5; ++iter) {
+            auto queries {gen_queries_with_range(n, iter ,range_len, NUM_QUERIES)};
+            timer.start();
+            for (int i {0}; i < NUM_QUERIES; ++i)
+                sink ^= query_fn(*rmq_ptr, queries[i].l, queries[i].r);
+            double current_run_cpu {timer.stop()};
+            if (current_run_cpu < best_query_cpu) {
+                best_query_cpu = current_run_cpu;
+            }
+        }
         do_not_optimize(sink);
-
-        // Measure query time
-        timer.start();
-        for (int i {0}; i < NUM_QUERIES; ++i)
-            sink ^= query_fn(*rmq_ptr, queries[i].l, queries[i].r);
-        do_not_optimize(sink);
-        double query_cpu {timer.stop()};
 
         write_row(csv, algo_name, block_size, n, data_type, "query",
-                  range_len, query_cpu / NUM_QUERIES, bits);
+                  range_len, best_query_cpu / NUM_QUERIES, bits);
     }
 }
 
