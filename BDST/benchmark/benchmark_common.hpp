@@ -26,13 +26,13 @@
 
 using namespace std;
 
-// Dead Code Elimination barrier (from FL-RMQ benchmark)
+// dead Code Elimination (from FL-RMQ benchmark)
 template<class T>
 void do_not_optimize(T const &value) {
     asm volatile("" : : "r,m"(value) : "memory");
 }
 
-// Data Generators 
+// data Generators 
 
 inline vector<int> gen_random_perm(uint64_t n) {
     vector<int> v(n);
@@ -63,7 +63,7 @@ inline vector<int> gen_lcp_array(uint64_t n) {
     return v;
 }
 
-// Pseudo monotone increasing
+// pseudo monotone increasing
 inline vector<int> gen_increasing_trend(uint64_t n, int delta = 10000) {
     vector<int> v(n);
     mt19937 rng(42);
@@ -85,7 +85,7 @@ inline vector<int> gen_decreasing_trend(uint64_t n, int delta = 10000) {
     return v;
 }
 
-// Query Generator 
+// query Generator 
 
 struct QueryPair { uint64_t l, r; };
 
@@ -163,7 +163,7 @@ void run_generic(ofstream& csv, const string& algo_name, int block_size,
     if (block_size > 0) cout << " with B=" << block_size;
     cout << " ... " << flush;
 
-    // Measure space usage and construction time
+    // measure space usage and construction time
     malloc_count_reset_peak();
     size_t mem_before {malloc_count_current()};
     timer.start();
@@ -181,9 +181,10 @@ void run_generic(ofstream& csv, const string& algo_name, int block_size,
     size_t sink { 0 };
     for (uint64_t range_len : query_ranges) {
         if (range_len >= n) continue;
-        // Measure query time Best of 5 batches
+        // measure query time Best of 5 batches
         double best_query_cpu { 1e18 }; 
         for (int iter {0}; iter < 5; ++iter) {
+            // for each batch new query pairs to avoid branch predectability
             auto queries {gen_queries_with_range(n, iter ,range_len, NUM_QUERIES)};
             timer.start();
             for (int i {0}; i < NUM_QUERIES; ++i)
