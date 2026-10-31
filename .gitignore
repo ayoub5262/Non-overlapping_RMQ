@@ -1,9 +1,3 @@
-FL-RMQ/
-sdsl-lite/
 build/
-rmq/
-malloc_count/
-RMQ-experiments/
-BbST/
 .*
 english.1024MB

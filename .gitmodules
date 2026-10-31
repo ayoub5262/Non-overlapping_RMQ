@@ -1,0 +1,18 @@
+[submodule "FL-RMQ"]
+	path = FL-RMQ
+	url = https://github.com/FilippoLari/FL-RMQ
+[submodule "sdsl-lite"]
+	path = sdsl-lite
+	url = https://github.com/kittobi1992/sdsl-lite
+[submodule "malloc_count"]
+	path = malloc_count
+	url = https://github.com/bingmann/malloc_count
+[submodule "RMQ-experiments"]
+	path = RMQ-experiments
+	url = https://github.com/FilippoLari/RMQ-experiments
+[submodule "BbST"]
+	path = BbST
+	url = https://github.com/kowallus/BbST
+[submodule "rmq"]
+	path = rmq
+	url = https://github.com/hferrada/rmq
